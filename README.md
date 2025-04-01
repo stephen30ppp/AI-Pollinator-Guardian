@@ -8,7 +8,7 @@ AI Pollinator Guardian is a mobile application designed to address the critical 
 
 ### Environmental Problem Addressed
 
-Pollinator decline threatens food crops and ecosystems worldwide. Approximately 75% of global food crops and 87% of flowering plants depend on animal pollinators. However, many pollinator species (bees, butterflies, etc.) are in sharp decline due to habitat loss, pesticides, and climate change – endangering biodiversity and crop yields.
+Pollinator decline threatens food crops and ecosystems worldwide. Approximately 75% of global food crops and 87% ([Brunet, J., & Fragoso, F. P. 2024](https://www.cabidigitallibrary.org/doi/10.1079/cabireviews.2024.0016#:~:text=What%20are%20the%20main%20reasons,on%20pollinators%20for%20seed), [Carrington, D. 2023, January 9](https://www.theguardian.com/environment/2023/jan/09/global-pollinator-losses-causing-500000-early-deaths-a-year-study#:~:text=Three,pollinator%20loss%2C%20the%20scientists%20said)) of flowering plants depend on animal pollinators. However, many pollinator species (bees, butterflies, etc.) are in sharp decline due to habitat loss, pesticides, and climate change – endangering biodiversity and crop yields.
 
 ### UN Sustainable Development Goals
 
