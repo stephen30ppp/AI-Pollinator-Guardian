@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Pollinator Guardian - Chatbot Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Roboto', sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .app-container {
+      max-width: 412px;
+      height: 800px;
+      margin: 20px auto;
+      background-color: white;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .app-header {
+      background-color: #4CAF50;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .app-title {
+      font-size: 20px;
+      font-weight: 500;
+    }
+    
+    .content {
+      height: calc(100% - 72px);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .chat-container {
+      flex-grow: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background-color: #f5f5f5;
+    }
+    
+    .input-container {
+      padding: 12px 16px;
+      background-color: white;
+      border-top: 1px solid #eee;
+      display: flex;
+      align-items: center;
+    }
+    
+    .message-input {
+      flex-grow: 1;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      padding: 12px 16px;
+      margin-right: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+    
+    .send-button {
+      width: 48px;
+      height: 48px;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .message {
+      margin-bottom: 16px;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      position: relative;
+      line-height: 1.4;
+    }
+    
+    .user-message {
+      background-color: #E3F2FD;
+      color: #0D47A1;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .bot-message {
+      background-color: white;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .message-time {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+      text-align: right;
+    }
+    
+    .bot-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    
+    .bot-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+      margin-right: 8px;
+    }
+    
+    .bot-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #666;
+    }
+    
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background-color: white;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border-top: 1px solid #eee;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      color: #777;
+      width: 25%;
+      cursor: pointer;
+    }
+    
+    .nav-item.active {
+      color: #4CAF50;
+    }
+    
+    .nav-icon {
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+    
+    .nav-label {
+      font-size: 12px;
+    }
+    
+    .suggestion-chips {
+      display: flex;
+      overflow-x: auto;
+      padding: 8px 0;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .suggestion-chip {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 14px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    
+    .suggestion-chip:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .resource-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .resource-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .resource-content {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    
+    .resource-link {
+      display: flex;
+      align-items: center;
+      color: #4CAF50;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    
+    .resource-icon {
+      margin-left: 4px;
+      font-size: 18px;
+    }
+    
+    .plant-recommendation {
+      display: flex;
+      background-color: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .plant-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-right: 12px;
+    }
+    
+    .plant-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .plant-info {
+      flex-grow: 1;
+    }
+    
+    .plant-name {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .plant-description {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .typing-indicator {
+      display: flex;
+      padding: 12px 16px;
+      background-color: white;
+      border-radius: 18px;
+      border-bottom-left-radius: 4px;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+    
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #aaa;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: typing 1.5s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+    
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+    
+    @keyframes typing {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="app-header">
+      <div class="app-title">Pollinator Assistant</div>
+    </div>
+    
+    <div class="content">
+      <div class="chat-container">
+        <!-- Bot welcome message -->
+        <div class="bot-info">
+          <div class="bot-avatar">🐝</div>
+          <div class="bot-name">Bee Guide</div>
+        </div>
+        <div class="message bot-message">
+          Hello! I'm your pollinator gardening assistant. I can help with identifying pollinators, suggesting plants, and providing care tips. What would you like to know today?
+          <div class="message-time">10:32 AM</div>
+        </div>
+        
+        <!-- Suggestion chips -->
+        <div class="suggestion-chips">
+          <div class="suggestion-chip">How to attract bees?</div>
+          <div class="suggestion-chip">Best plants for butterflies</div>
+          <div class="suggestion-chip">Pollinator garden tips</div>
+          <div class="suggestion-chip">Identify a pollinator</div>
+        </div>
+        
+        <!-- User message -->
+        <div class="message user-message">
+          What plants should I add to my garden to help honeybees?
+          <div class="message-time">10:33 AM</div>
+        </div>
+        
+        <!-- Bot response with recommendations -->
+        <div class="bot-info">
+          <div class="bot-avatar">🐝</div>
+          <div class="bot-name">Bee Guide</div>
+        </div>
+        <div class="message bot-message">
+          Honeybees love plants that produce abundant nectar and pollen! Here are some excellent options for your garden:
+          <div class="message-time">10:33 AM</div>
+        </div>
+        
+        <!-- Plant recommendations -->
+        <div class="plant-recommendation">
+          <div class="plant-image">
+            <img src="/api/placeholder/100/100" alt="Lavender">
+          </div>
+          <div class="plant-info">
+            <div class="plant-name">Lavender</div>
+            <div class="plant-description">Fragrant perennial that blooms throughout summer. Bees love its nectar-rich flowers.</div>
+          </div>
+        </div>
+        
+        <div class="plant-recommendation">
+          <div class="plant-image">
+            <img src="/api/placeholder/100/100" alt="Sunflower">
+          </div>
+          <div class="plant-info">
+            <div class="plant-name">Sunflower</div>
+            <div class="plant-description">Produces abundant pollen and seeds. A favorite for many bee species.</div>
+          </div>
+        </div>
+        
+        <div class="plant-recommendation">
+          <div class="plant-image">
+            <img src="/api/placeholder/100/100" alt="Borage">
+          </div>
+          <div class="plant-info">
+            <div class="plant-name">Borage</div>
+            <div class="plant-description">Star-shaped blue flowers produce nectar throughout the day. Self-seeds readily.</div>
+          </div>
+        </div>
+        
+        <!-- Additional bot message -->
+        <div class="bot-info">
+          <div class="bot-avatar">🐝</div>
+          <div class="bot-name">Bee Guide</div>
+        </div>
+        <div class="message bot-message">
+          For the best results, plant these in groups and choose varieties with different blooming times to provide food throughout the growing season. Make sure to avoid using pesticides, as they can harm the bees you're trying to attract!
+          <div class="message-time">10:34 AM</div>
+        </div>
+        
+        <!-- Resource card -->
+        <div class="resource-card">
+          <div class="resource-title">Bee-Friendly Gardening Guide</div>
+          <div class="resource-content">Learn more about creating the perfect habitat for honeybees and other pollinators in your garden.</div>
+          <div class="resource-link">
+            View Guide <span class="resource-icon">→</span>
+          </div>
+        </div>
+        
+        <!-- User message -->
+        <div class="message user-message">
+          When is the best time to plant these?
+          <div class="message-time">10:36 AM</div>
+        </div>
+        
+        <!-- Typing indicator -->
+        <div class="bot-info">
+          <div class="bot-avatar">🐝</div>
+          <div class="bot-name">Bee Guide</div>
+        </div>
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+      
+      <div class="input-container">
+        <input type="text" class="message-input" placeholder="Ask a question...">
+        <div class="send-button">→</div>
+      </div>
+    </div>
+    
+    <div class="bottom-nav">
+      <div class="nav-item">
+        <div class="nav-icon">🏠</div>
+        <div class="nav-label">Home</div>
+      </div>
+      
+      <div class="nav-item">
+        <div class="nav-icon">📷</div>
+        <div class="nav-label">Identify</div>
+      </div>
+      
+      <div class="nav-item">
+        <div class="nav-icon">🗺️</div>
+        <div class="nav-label">Map</div>
+      </div>
+      
+      <div class="nav-item active">
+        <div class="nav-icon">💬</div>
+        <div class="nav-label">Chat</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
