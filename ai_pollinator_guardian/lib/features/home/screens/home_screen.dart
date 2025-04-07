@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/recent_activity_card.dart';
+import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,18 +11,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Mapping: 0: Home, 1: Identify, 2: Map (via FAB), 3: Garden, 4: Chat.
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Pollinator Guardian'),
+        title: const Text(
+          'AI Pollinator Guardian',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF4CAF50),
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(Icons.info_outline, color: Colors.white),
             onPressed: () {
               // Info button action
             },
@@ -29,13 +33,42 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: _buildBottomNav(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Handle map navigation
+          Navigator.pushNamed(context, '/map');
+        },
+        backgroundColor: const Color(0xFF4CAF50),
+        elevation: 2,
+        child: const Text('🗺️', style: TextStyle(fontSize: 24)),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: PollinatorBottomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+
+          // Handle navigation based on index
+          if (index == 4) {
+            // Chat
+            Navigator.pushNamed(context, '/chat');
+          } else if (index == 1) {
+            // Identify
+            Navigator.pushNamed(context, '/identify');
+          } else if (index == 3) {
+            // Garden
+            Navigator.pushNamed(context, '/garden');
+          }
+        },
+      ),
     );
   }
 
   Widget _buildBody() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,6 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildFeatureCards(),
           const SizedBox(height: 24),
           _buildRecentActivitySection(),
+          // Add extra padding at bottom to ensure content doesn't get cut off
+          const SizedBox(height: 80),
         ],
       ),
     );
@@ -66,10 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Text(
-                '🐝',
-                style: TextStyle(fontSize: 24),
-              ),
+              child: Text('🐝', style: TextStyle(fontSize: 24)),
             ),
           ),
           const SizedBox(width: 16),
@@ -78,18 +110,12 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Welcome, Nature Guardian!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  "Good Day, Nature Guardian!",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  'Help protect our pollinators today',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
+                  "Let's create a vibrant haven for our buzzing friends.",
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ],
             ),
@@ -104,19 +130,20 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         FeatureCard(
           title: 'Identify Pollinators',
-          description: 'Take a photo to identify bee and butterfly species',
+          description:
+              'Snap a photo to reveal the secret lives of bees & butterflies.',
           imagePath: 'assets/images/identify_pollinators.jpg',
           onTap: () {
-            // Navigate to identification screen
+            Navigator.pushNamed(context, '/identify');
           },
         ),
         const SizedBox(height: 20),
         FeatureCard(
           title: 'Garden Scanner',
-          description: 'Analyze your garden and get recommendations',
+          description: 'Analyze your garden and get custom pollinator tips.',
           imagePath: 'assets/images/garden_scanner.jpg',
           onTap: () {
-            // Navigate to garden scanner screen
+            Navigator.pushNamed(context, '/garden');
           },
         ),
       ],
@@ -131,10 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Text(
               'Recent Activity',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             GestureDetector(
               onTap: () {
@@ -142,40 +166,38 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: const Text(
                 'View all',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF4CAF50),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF4CAF50)),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
+        // Fixed width to prevent overflowing 
         SizedBox(
           height: 160,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
               RecentActivityCard(
-                title: 'Bumblebee',
+                title: 'Bumblebee Buzz',
                 date: 'Today',
                 imagePath: 'assets/images/bumblebee.jpg',
                 onTap: () {},
               ),
               RecentActivityCard(
-                title: 'Monarch',
+                title: 'Monarch Magic',
                 date: 'Yesterday',
                 imagePath: 'assets/images/monarch.jpg',
                 onTap: () {},
               ),
               RecentActivityCard(
-                title: 'My Garden',
+                title: 'My Blooming Garden',
                 date: '2 days ago',
                 imagePath: 'assets/images/garden.jpg',
                 onTap: () {},
               ),
               RecentActivityCard(
-                title: 'Honeybee',
+                title: 'Honeybee Huddle',
                 date: '3 days ago',
                 imagePath: 'assets/images/honeybee.jpg',
                 onTap: () {},
@@ -184,65 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      height: 72,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(icon: '🏠', label: 'Home', index: 0),
-          _buildNavItem(icon: '📷', label: 'Identify', index: 1),
-          _buildNavItem(icon: '🗺️', label: 'Map', index: 2),
-          _buildNavItem(icon: '💬', label: 'Chat', index: 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({required String icon, required String label, required int index}) {
-    final bool isActive = _selectedIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
-          // Handle navigation here
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              icon,
-              style: TextStyle(
-                fontSize: 24,
-                color: isActive ? const Color(0xFF4CAF50) : Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isActive ? const Color(0xFF4CAF50) : Colors.grey[700],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

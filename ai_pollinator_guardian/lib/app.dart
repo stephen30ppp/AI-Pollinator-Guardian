@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'features/chat_assistant/providers/chat_provider.dart';
+import 'features/chat_assistant/screens/chat_screen.dart';
 // import 'features/authentication/screens/login_screen.dart';
 import 'features/home/screens/home_screen.dart';
 // import 'features/pollinator_id/screens/identification_screen.dart';
 // import 'features/garden_scanner/screens/garden_scanner_screen.dart';
 // import 'features/community_map/screens/community_map_screen.dart';
-// import 'features/chat_assistant/screens/chat_screen.dart';
 import 'constants/app_colors.dart';
 
 class PollinatorGuardianApp extends StatelessWidget {
@@ -12,22 +14,27 @@ class PollinatorGuardianApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AI Pollinator Guardian',
-      theme: ThemeData(
-        primarySwatch: AppColors.primarySwatch,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Roboto',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+      child: MaterialApp(
+        title: 'AI Pollinator Guardian',
+        theme: ThemeData(
+          primarySwatch: AppColors.primarySwatch,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+          fontFamily: 'Roboto',
+        ),
+        initialRoute: '/chat',
+        routes: {
+          '/': (context) => const HomeScreen(),
+          '/chat': (context) => const ChatScreen(),
+          // '/login': (context) => const LoginScreen(),
+          // '/identify': (context) => const IdentificationScreen(),
+          // '/garden': (context) => const GardenScannerScreen(),
+          // '/map': (context) => const CommunityMapScreen(),
+        },
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const HomeScreen(),
-      //   '/login': (context) => const LoginScreen(),
-      //   '/identify': (context) => const IdentificationScreen(),
-      //   '/garden': (context) => const GardenScannerScreen(),
-      //   '/map': (context) => const CommunityMapScreen(),
-      //   '/chat': (context) => const ChatScreen(),
-      },
     );
   }
 }

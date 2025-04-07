@@ -7,12 +7,12 @@ class RecentActivityCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const RecentActivityCard({
-    super.key,
+    Key? key,
     required this.title,
     required this.date,
     required this.imagePath,
     required this.onTap,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,85 +20,56 @@ class RecentActivityCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 120,
-        height: 160,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                imagePath,
-                width: 120,
-                height: 160,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 120,
-                    height: 160,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported, size: 30),
-                    ),
-                  );
-                },
-              ),
-            ),
-            // Gradient overlay
             Container(
+              height: 120,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.7),
-                  ],
-                  stops: const [0.6, 1.0],
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                image: DecorationImage(
+                  image: AssetImage(imagePath),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-            // Text
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      date,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    date,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

@@ -1,71 +1,114 @@
 import 'package:flutter/material.dart';
+import 'package:ai_pollinator_guardian/constants/app_colors.dart';
+import 'package:ai_pollinator_guardian/models/chat_message_model.dart';
 import 'package:intl/intl.dart';
-import '../../../constants/app_colors.dart';
 
 class MessageBubble extends StatelessWidget {
-  final String message;
-  final bool isUser;
-  final DateTime timestamp;
-
+  final ChatMessageModel message;
+  
   const MessageBubble({
-    super.key,
+    Key? key,
     required this.message,
-    required this.isUser,
-    required this.timestamp,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.8,
+    final isUser = message.isUser;
+    
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isUser ? const Color(0xFFE3F2FD) : Colors.white,
+          borderRadius: BorderRadius.circular(18).copyWith(
+            bottomRight: isUser ? const Radius.circular(4) : null,
+            bottomLeft: !isUser ? const Radius.circular(4) : null,
           ),
-          margin: const EdgeInsets.only(top: 4),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          decoration: BoxDecoration(
-            color: isUser ? const Color(0xFFE3F2FD) : Colors.white,
-            borderRadius: BorderRadius.circular(18).copyWith(
-              bottomRight: isUser ? const Radius.circular(4) : null,
-              bottomLeft: !isUser ? const Radius.circular(4) : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 1),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+          ],
+        ),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isUser) 
+              const BotInfo(),
+            
+            Text(
+              message.text,
+              style: TextStyle(
+                color: isUser ? const Color(0xFF0D47A1) : Colors.black87,
+                fontSize: 16,
               ),
-            ],
-          ),
-          child: Text(
-            message,
-            style: TextStyle(
-              fontSize: 16,
-              color: isUser ? const Color(0xFF0D47A1) : Colors.black87,
-              height: 1.4,
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            _formatTime(timestamp),
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
+            
+            const SizedBox(height: 4),
+            
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                _formatTime(message.timestamp),
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
-
+  
   String _formatTime(DateTime time) {
-    return DateFormat.jm().format(time); // Format as "10:32 AM"
+    return DateFormat('h:mm a').format(time);
+  }
+}
+
+class BotInfo extends StatelessWidget {
+  const BotInfo({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: AppColors.primaryColor,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '🐝',
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Bee Guide',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
