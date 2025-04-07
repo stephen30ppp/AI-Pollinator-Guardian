@@ -3,6 +3,7 @@ import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/models/chat_message_model.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:convert';
 
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
@@ -12,9 +13,12 @@ class GeminiService {
   late GenerativeModel _model;
   ChatSession? _chatSession;
   final uuid = Uuid();
+  bool _isInitialized = false;
 
   // Initialize the Gemini service with the appropriate model
   Future<void> initialize() async {
+    if (_isInitialized) return; // Prevent re-initialization
+    
     debugPrint('Initializing GeminiService...');
     _model = FirebaseVertexAI.instance.generativeModel(
       model: 'gemini-2.0-flash',
@@ -30,6 +34,7 @@ class GeminiService {
 
     // Start a new chat session
     await _startNewChat();
+    _isInitialized = true;
   }
 
   Future<void> _startNewChat() async {
@@ -190,6 +195,60 @@ class GeminiService {
         isUser: false,
         timestamp: DateTime.now(),
       );
+    }
+  }
+  
+  /// Get a structured JSON response from Gemini
+  /// 
+  /// This method uses a JSON schema to get a structured response from Gemini
+  /// It returns the parsed JSON as a Map<String, dynamic>
+  Future<Map<String, dynamic>> getStructuredResponse({
+    required List<Content> content,
+    required Schema schema,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+    
+    debugPrint('Getting structured response with JSON schema');
+    
+    try {
+      // Create a new model instance with JSON response configuration
+      final structuredModel = FirebaseVertexAI.instance.generativeModel(
+        model: 'gemini-2.0-flash',
+        generationConfig: GenerationConfig(
+          temperature: 0.2, // Lower temperature for more predictable structured output
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        ),
+      );
+      
+      // Send the request with content
+      final response = await structuredModel.generateContent(content);
+      
+      // Parse and return the response as JSON
+      if (response.text != null) {
+        // The response comes as a JSON string in the text property
+        final jsonString = response.text!;
+        debugPrint('Received structured response: $jsonString');
+        
+        // Parse the JSON string into a Map
+        // We're using the built-in JSON parser from the dart:convert package
+        final jsonMap = jsonDecode(response.text!);
+        
+        return jsonMap;
+      } else {
+        throw Exception('Empty response received from Gemini');
+      }
+    } catch (e) {
+      debugPrint('Error getting structured response: $e');
+      // Return a basic error structure
+      return {
+        'error': true,
+        'message': 'Failed to analyze garden: $e',
+      };
     }
   }
 }

@@ -7,7 +7,6 @@ import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/message_b
 import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/suggestion_chips.dart';
 import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/resource_card.dart';
 import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/typing_indicator.dart';
-import 'package:ai_pollinator_guardian/models/chat_message_model.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
