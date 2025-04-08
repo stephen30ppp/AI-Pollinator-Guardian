@@ -1,9 +1,9 @@
+import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/models/chat_message_model.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:convert';
 
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
@@ -222,8 +222,26 @@ class GeminiService {
           topP: 0.95,
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
+          responseSchema: schema,
         ),
       );
+      
+      // Update the first text content to specify we want ONE result
+      if (content.isNotEmpty && content[0].parts.isNotEmpty) {
+        for (int i = 0; i < content[0].parts.length; i++) {
+          if (content[0].parts[i] is TextPart) {
+            TextPart textPart = content[0].parts[i] as TextPart;
+            String originalText = textPart.text;
+            
+            // Modify the prompt to emphasize we want one result
+            String modifiedText = originalText + "\n\nIMPORTANT: Provide only ONE identification with the highest confidence. Do NOT return a list of multiple identifications.";
+            
+            // Replace the original TextPart with the modified one
+            content[0].parts[i] = TextPart(modifiedText);
+            break;
+          }
+        }
+      }
       
       // Send the request with content
       final response = await structuredModel.generateContent(content);
@@ -234,11 +252,38 @@ class GeminiService {
         final jsonString = response.text!;
         debugPrint('Received structured response: $jsonString');
         
-        // Parse the JSON string into a Map
-        // We're using the built-in JSON parser from the dart:convert package
-        final jsonMap = jsonDecode(response.text!);
+        // Try to parse the response - it might be a list or a single object
+        dynamic parsedJson;
         
-        return jsonMap;
+        try {
+          // First, try to extract the JSON from functionResponse.outputs
+          final jsonMap = jsonDecode(response.text!);
+          parsedJson = jsonMap;
+        } catch (e) {
+          // If that fails, try to parse the text directly
+          debugPrint('Failed to extract from functionResponse, parsing text directly');
+          try {
+            parsedJson = json.decode(jsonString);
+          } catch (e) {
+            debugPrint('Failed to parse response as JSON: $e');
+            throw Exception('Invalid JSON response');
+          }
+        }
+        
+        // Check if the response is a list or a single object
+        if (parsedJson is List) {
+          debugPrint('Response is a list, taking the first item');
+          // If it's a list, take the first item (highest confidence)
+          if (parsedJson.isEmpty) {
+            throw Exception('Empty identification list returned');
+          }
+          return Map<String, dynamic>.from(parsedJson[0]);
+        } else if (parsedJson is Map) {
+          // If it's already a map, return it
+          return Map<String, dynamic>.from(parsedJson);
+        } else {
+          throw Exception('Unexpected response format');
+        }
       } else {
         throw Exception('Empty response received from Gemini');
       }
@@ -247,7 +292,7 @@ class GeminiService {
       // Return a basic error structure
       return {
         'error': true,
-        'message': 'Failed to analyze garden: $e',
+        'message': 'Failed to analyze: $e',
       };
     }
   }
