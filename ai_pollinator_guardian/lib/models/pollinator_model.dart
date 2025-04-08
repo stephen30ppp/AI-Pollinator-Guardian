@@ -4,7 +4,7 @@ class PollinatorModel {
   final String scientificName;
   final String description;
   final String imageUrl;
-  final String type; // e.g., 'bee', 'butterfly', 'other'
+  final String type;
   final List<String> preferredPlants;
   final String conservationStatus;
   final Map<String, dynamic> additionalInfo;
@@ -16,9 +16,9 @@ class PollinatorModel {
     required this.description,
     required this.imageUrl,
     required this.type,
-    this.preferredPlants = const [],
-    this.conservationStatus = 'Unknown',
-    this.additionalInfo = const {},
+    required this.preferredPlants,
+    required this.conservationStatus,
+    required this.additionalInfo,
   });
 
   factory PollinatorModel.fromJson(Map<String, dynamic> json) {
@@ -29,9 +29,9 @@ class PollinatorModel {
       description: json['description'] as String,
       imageUrl: json['imageUrl'] as String,
       type: json['type'] as String,
-      preferredPlants: List<String>.from(json['preferredPlants'] ?? []),
-      conservationStatus: json['conservationStatus'] as String? ?? 'Unknown',
-      additionalInfo: json['additionalInfo'] as Map<String, dynamic>? ?? {},
+      preferredPlants: List<String>.from(json['preferredPlants']),
+      conservationStatus: json['conservationStatus'] as String,
+      additionalInfo: Map<String, dynamic>.from(json['additionalInfo']),
     );
   }
 

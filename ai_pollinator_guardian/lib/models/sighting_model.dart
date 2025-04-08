@@ -7,10 +7,8 @@ class SightingModel {
   final String pollinatorName;
   final String imageUrl;
   final GeoPoint location;
-  final String locationName;
   final double confidence;
   final DateTime timestamp;
-  final Map<String, dynamic> additionalData;
 
   SightingModel({
     required this.id,
@@ -19,10 +17,8 @@ class SightingModel {
     required this.pollinatorName,
     required this.imageUrl,
     required this.location,
-    this.locationName = '',
     required this.confidence,
     required this.timestamp,
-    this.additionalData = const {},
   });
 
   factory SightingModel.fromJson(Map<String, dynamic> json) {
@@ -33,10 +29,8 @@ class SightingModel {
       pollinatorName: json['pollinatorName'] as String,
       imageUrl: json['imageUrl'] as String,
       location: json['location'] as GeoPoint,
-      locationName: json['locationName'] as String? ?? '',
-      confidence: (json['confidence'] as num).toDouble(),
+      confidence: json['confidence'] as double,
       timestamp: (json['timestamp'] as Timestamp).toDate(),
-      additionalData: json['additionalData'] as Map<String, dynamic>? ?? {},
     );
   }
 
@@ -48,10 +42,8 @@ class SightingModel {
       'pollinatorName': pollinatorName,
       'imageUrl': imageUrl,
       'location': location,
-      'locationName': locationName,
       'confidence': confidence,
-      'timestamp': timestamp,
-      'additionalData': additionalData,
+      'timestamp': Timestamp.fromDate(timestamp),
     };
   }
 }
