@@ -215,7 +215,7 @@ class GeminiService {
     try {
       // Create a new model instance with JSON response configuration
       final structuredModel = FirebaseVertexAI.instance.generativeModel(
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.0-flash-lite',
         generationConfig: GenerationConfig(
           temperature: 0.2, // Lower temperature for more predictable structured output
           topK: 40,
