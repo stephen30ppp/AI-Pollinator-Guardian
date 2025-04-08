@@ -1,6 +1,5 @@
-// import 'package:ai_pollinator_guardian/features/community_map/page/community_map_screen.dart';
-import 'package:ai_pollinator_guardian/features/community_map/community_map_provider.dart';
-import 'package:ai_pollinator_guardian/features/community_map/page/community_map_screen.dart';
+import 'package:ai_pollinator_guardian/features/community_map/providers/community_map_provider.dart';
+import 'package:ai_pollinator_guardian/features/community_map/screens/community_map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'features/chat_assistant/providers/chat_provider.dart';
