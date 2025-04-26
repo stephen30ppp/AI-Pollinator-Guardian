@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Mapping: 0: Home, 1: Identify, 2: Map (via FAB), 3: Garden, 4: Chat.
+  // Mapping: 0: Home, 1: Identify, 2: Map (via FAB), 3: Garden, 4: Chat
   int _selectedIndex = 0;
 
   @override
@@ -24,10 +24,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: const Color(0xFF4CAF50),
         actions: [
+          // Profile icon in app bar
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
+            icon: const Icon(Icons.person_outline, color: Colors.white),
             onPressed: () {
-              // Info button action
+              Navigator.pushNamed(context, '/profile');
             },
           ),
         ],
@@ -51,15 +52,17 @@ class _HomeScreenState extends State<HomeScreen> {
           });
 
           // Handle navigation based on index
-          if (index == 4) {
-            // Chat
-            Navigator.pushNamed(context, '/chat');
+          if (index == 0) {
+            // Home - already here, do nothing
           } else if (index == 1) {
             // Identify
             Navigator.pushNamed(context, '/identify');
           } else if (index == 3) {
             // Garden
             Navigator.pushNamed(context, '/garden');
+          } else if (index == 4) {
+            // Chat
+            Navigator.pushNamed(context, '/chat');
           }
         },
       ),
