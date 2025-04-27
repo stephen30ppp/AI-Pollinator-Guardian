@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Carousel and animation
+  card_swiper: ^2.0.4
+  smooth_page_indicator: ^1.1.0
+
   # UI
   cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.9
