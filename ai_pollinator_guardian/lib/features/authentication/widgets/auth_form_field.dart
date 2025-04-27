@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../constants/app_colors.dart';
+import '../../../constants/design_tokens.dart';
 
 class AuthFormField extends StatelessWidget {
   final String label;
@@ -13,6 +13,8 @@ class AuthFormField extends StatelessWidget {
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final Function(String)? onFieldSubmitted;
+  final List<String>? autofillHints;
+  final IconData? prefixIcon;
 
   const AuthFormField({
     Key? key,
@@ -27,87 +29,100 @@ class AuthFormField extends StatelessWidget {
     this.focusNode,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.autofillHints,
+    this.prefixIcon,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimaryColor,
+          style: DesignTokens.labelMedium.copyWith(
+            color: colorScheme.onSurface,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: DesignTokens.s),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           validator: validator,
-          keyboardType: keyboardType,
+          keyboardType: obscureText 
+              ? TextInputType.visiblePassword 
+              : keyboardType,
           focusNode: focusNode,
           textInputAction: textInputAction,
           onFieldSubmitted: onFieldSubmitted,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.textPrimaryColor,
+          autofillHints: autofillHints,
+          style: DesignTokens.bodyLarge.copyWith(
+            color: colorScheme.onSurface,
           ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(
-              color: AppColors.textSecondaryColor.withOpacity(0.7),
-              fontSize: 15,
+            hintStyle: DesignTokens.bodyLarge.copyWith(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, 
-              vertical: 14,
+              horizontal: DesignTokens.l,
+              vertical: DesignTokens.m,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
               borderSide: BorderSide(
-                color: Colors.grey.shade300,
+                color: colorScheme.outline,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
               borderSide: BorderSide(
-                color: Colors.grey.shade300,
+                color: colorScheme.outline.withOpacity(0.5),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(
-                color: AppColors.primaryColor,
+              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
+              borderSide: BorderSide(
+                color: colorScheme.primary,
                 width: 1.5,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
               borderSide: BorderSide(
-                color: Colors.red.shade400,
+                color: colorScheme.error,
                 width: 1,
               ),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
               borderSide: BorderSide(
-                color: Colors.red.shade400,
+                color: colorScheme.error,
                 width: 1.5,
               ),
             ),
+            prefixIcon: prefixIcon != null 
+                ? Icon(
+                    prefixIcon,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ) 
+                : null,
             suffixIcon: suffixIcon != null
-                ? GestureDetector(
+                ? InkWell(
+                    borderRadius: BorderRadius.circular(DesignTokens.radiusCircular),
                     onTap: onTapSuffix,
                     child: suffixIcon,
                   )
                 : null,
+            suffixIconConstraints: const BoxConstraints(minWidth: 48),
           ),
         ),
       ],

@@ -245,14 +245,6 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
                   ],
                 ),
               ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/map');
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: const Text('🗺️', style: TextStyle(fontSize: 24)),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 3, // Garden is selected
         onItemSelected: (index) {
@@ -260,6 +252,8 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
             Navigator.pushReplacementNamed(context, '/');
           } else if (index == 1) {
             Navigator.pushNamed(context, '/identify');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/map');
           } else if (index == 4) {
             Navigator.pushNamed(context, '/chat');
           }

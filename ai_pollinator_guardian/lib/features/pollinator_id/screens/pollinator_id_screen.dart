@@ -22,7 +22,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
   bool _isCameraView = true; // Toggle between camera view and results view
   File? _selectedImage;
   Map<String, dynamic>? _identificationResult;
-  
+
   // List to store past identifications during this app session
   final List<Map<String, dynamic>> _pastIdentifications = [];
 
@@ -38,9 +38,10 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
 
   Future<void> _captureImage(bool fromCamera) async {
     try {
-      File? image = fromCamera
-          ? await _storageService.takePhoto()
-          : await _storageService.pickImage();
+      File? image =
+          fromCamera
+              ? await _storageService.takePhoto()
+              : await _storageService.pickImage();
 
       if (image != null) {
         setState(() {
@@ -48,13 +49,13 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           _isLoading = true;
           _isCameraView = false; // Switch to results view
         });
-        
+
         await _identifyPollinator(image);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error capturing image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error capturing image: $e')));
     }
   }
 
@@ -98,11 +99,11 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
         
         If you cannot identify the species with reasonable confidence, provide your best guess but indicate lower confidence.
         If the image doesn't contain a pollinator, explain that in the response with a "notFound" field set to true.
-        """
+        """,
       );
-      
+
       final imagePart = InlineDataPart('image/jpeg', imageBytes);
-      
+
       // Set up JSON schema
       final schema = Schema.object(
         properties: {
@@ -140,7 +141,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
 
       // Build content for the request
       final content = Content.multi([prompt, imagePart]);
-      
+
       // Get structured response from Gemini
       final response = await _geminiService.getStructuredResponse(
         content: [content],
@@ -151,10 +152,10 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       setState(() {
         _identificationResult = response;
         _isLoading = false;
-        
+
         // Add to past identifications if it's a valid identification
-        if (response['notFound'] != true && 
-            response['identification'] != null && 
+        if (response['notFound'] != true &&
+            response['identification'] != null &&
             response['identification']['commonName'] != null) {
           _pastIdentifications.insert(0, {
             'image': _selectedImage,
@@ -171,7 +172,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           'message': 'Failed to identify pollinator: $e',
         };
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error identifying pollinator: $e')),
       );
@@ -185,7 +186,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       _isCameraView = true;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -198,30 +199,25 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           ),
         ),
         backgroundColor: AppColors.primaryColor,
-        leading: _isCameraView ? null : IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: _resetIdentification,
-        ),
+        leading:
+            _isCameraView
+                ? null
+                : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: _resetIdentification,
+                ),
       ),
-      body: _isLoading 
-          ? _buildLoadingView()
-          : (_isCameraView ? _buildCameraView() : _buildResultsView()),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/map');
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: const Text(
-          '🗺️',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      body:
+          _isLoading
+              ? _buildLoadingView()
+              : (_isCameraView ? _buildCameraView() : _buildResultsView()),
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 1, // Identify is selected
         onItemSelected: (index) {
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/map');
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
           } else if (index == 4) {
@@ -231,7 +227,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       ),
     );
   }
-  
+
   Widget _buildLoadingView() {
     return Center(
       child: Column(
@@ -255,24 +251,18 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           const SizedBox(height: 24),
           Text(
             'Identifying pollinator...',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[700]),
           ),
           const SizedBox(height: 8),
           Text(
             'This may take a moment',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildCameraView() {
     return Column(
       children: [
@@ -300,10 +290,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     ),
                     child: const Text(
                       'Center the pollinator in the frame',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                 ],
@@ -318,11 +305,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                icon: const Icon(
-                  Icons.zoom_in,
-                  color: Colors.white,
-                  size: 30,
-                ),
+                icon: const Icon(Icons.zoom_in, color: Colors.white, size: 30),
                 onPressed: () {
                   // Zoom functionality would go here
                 },
@@ -335,10 +318,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 3,
-                    ),
+                    border: Border.all(color: Colors.white, width: 3),
                   ),
                   child: Center(
                     child: Container(
@@ -346,10 +326,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          width: 2,
-                        ),
+                        border: Border.all(color: Colors.grey[300]!, width: 2),
                       ),
                     ),
                   ),
@@ -369,18 +346,14 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       ],
     );
   }
-  
+
   Widget _buildResultsView() {
     if (_selectedImage == null) {
-      return const Center(
-        child: Text('No image selected'),
-      );
+      return const Center(child: Text('No image selected'));
     }
 
     if (_identificationResult == null) {
-      return const Center(
-        child: Text('No identification results available'),
-      );
+      return const Center(child: Text('No identification results available'));
     }
 
     // Check for error
@@ -391,11 +364,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 'Error During Identification',
@@ -407,13 +376,10 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _identificationResult!['message'] as String? ?? 
-                'An unknown error occurred',
+                _identificationResult!['message'] as String? ??
+                    'An unknown error occurred',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
@@ -436,7 +402,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
     }
 
     // Check if no pollinator was found
-    if (_identificationResult!.containsKey('notFound') && 
+    if (_identificationResult!.containsKey('notFound') &&
         _identificationResult!['notFound'] == true) {
       return Center(
         child: Padding(
@@ -444,11 +410,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.search_off,
-                size: 64,
-                color: Colors.orange[700],
-              ),
+              Icon(Icons.search_off, size: 64, color: Colors.orange[700]),
               const SizedBox(height: 16),
               Text(
                 'No Pollinator Detected',
@@ -462,10 +424,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
               Text(
                 'We couldn\'t identify a pollinator in this image. Please try again with a clearer photo.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
@@ -492,12 +451,12 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
     final details = _identificationResult!['details'];
     final plantPreferences = _identificationResult!['plantPreferences'];
     final conservationImpact = _identificationResult!['conservationImpact'];
-    
+
     final String commonName = identification['commonName'] ?? 'Unknown Species';
     final String scientificName = identification['scientificName'] ?? 'Unknown';
     final int confidence = identification['confidence'] ?? 0;
     final String type = identification['type'] ?? 'Unknown';
-    
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -507,10 +466,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
               SizedBox(
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.4,
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.file(_selectedImage!, fit: BoxFit.cover),
               ),
               Positioned(
                 top: 16,
@@ -536,7 +492,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
               ),
             ],
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -577,9 +533,9 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Species card
                 _buildInfoCard(
                   title: scientificName,
@@ -587,7 +543,8 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                   content: [
                     _infoItem(
                       icon: Icons.info_outline,
-                      text: details['description'] ?? 'No description available',
+                      text:
+                          details['description'] ?? 'No description available',
                     ),
                     _infoItem(
                       icon: Icons.eco_outlined,
@@ -595,28 +552,33 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     ),
                     _infoItem(
                       icon: Icons.home_outlined,
-                      text: details['habitat'] ?? 'Habitat information not available',
+                      text:
+                          details['habitat'] ??
+                          'Habitat information not available',
                     ),
                     _infoItem(
                       icon: Icons.local_florist_outlined,
-                      text: 'Prefers: ${plantPreferences['preferred']?.join(', ') ?? 'Unknown plants'}',
+                      text:
+                          'Prefers: ${plantPreferences['preferred']?.join(', ') ?? 'Unknown plants'}',
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Conservation impact card
                 _buildInfoCard(
                   title: 'Conservation Impact',
                   content: [
                     _infoItem(
                       icon: Icons.search_outlined,
-                      text: 'Your sighting helps scientists track ${commonName.toLowerCase()} populations in your area.',
+                      text:
+                          'Your sighting helps scientists track ${commonName.toLowerCase()} populations in your area.',
                     ),
                     _infoItem(
                       icon: Icons.bar_chart,
-                      text: '${conservationImpact['localSightings'] ?? 'Several'} ${type.toLowerCase()}s reported in your area this week.',
+                      text:
+                          '${conservationImpact['localSightings'] ?? 'Several'} ${type.toLowerCase()}s reported in your area this week.',
                     ),
                     if (conservationImpact['importance'] != null)
                       _infoItem(
@@ -625,9 +587,9 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                       ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Action buttons
                 SizedBox(
                   width: double.infinity,
@@ -655,9 +617,9 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 Center(
                   child: GestureDetector(
                     onTap: _resetIdentification,
@@ -671,17 +633,15 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 30),
-                
+
                 // Past Identifications Section
-                if (_pastIdentifications.isNotEmpty && _pastIdentifications.length > 1) ...[
+                if (_pastIdentifications.isNotEmpty &&
+                    _pastIdentifications.length > 1) ...[
                   const Text(
                     'Recent Identifications',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -691,22 +651,25 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                       itemCount: _pastIdentifications.length,
                       itemBuilder: (context, index) {
                         // Skip the current identification which is already shown
-                        if (index == 0 && 
-                            _pastIdentifications[0]['image'] == _selectedImage) {
+                        if (index == 0 &&
+                            _pastIdentifications[0]['image'] ==
+                                _selectedImage) {
                           return const SizedBox.shrink();
                         }
-                        
+
                         final item = _pastIdentifications[index];
                         final File? image = item['image'];
                         final Map<String, dynamic>? result = item['result'];
-                        
-                        if (image == null || result == null || 
+
+                        if (image == null ||
+                            result == null ||
                             result['identification'] == null) {
                           return const SizedBox.shrink();
                         }
-                        
-                        final name = result['identification']['commonName'] ?? 'Unknown';
-                        
+
+                        final name =
+                            result['identification']['commonName'] ?? 'Unknown';
+
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -761,17 +724,15 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       ),
     );
   }
-  
+
   Widget _buildInfoCard({
-    required String title, 
-    String? subtitle, 
-    required List<Widget> content
+    required String title,
+    String? subtitle,
+    required List<Widget> content,
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -779,19 +740,13 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
             const SizedBox(height: 16),
@@ -801,33 +756,26 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       ),
     );
   }
-  
+
   Widget _infoItem({required IconData icon, required String text}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: AppColors.primaryColor,
-          ),
+          Icon(icon, size: 20, color: AppColors.primaryColor),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.4,
-              ),
+              style: const TextStyle(fontSize: 14, height: 1.4),
             ),
           ),
         ],
       ),
     );
   }
-  
+
   Widget _actionButton({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -838,11 +786,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           color: Colors.black.withOpacity(0.6),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 20,
-        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }

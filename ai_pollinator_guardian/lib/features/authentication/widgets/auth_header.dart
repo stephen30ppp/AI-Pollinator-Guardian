@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../constants/app_colors.dart';
+import 'package:lottie/lottie.dart';
+import '../../../constants/design_tokens.dart';
 
 class AuthHeader extends StatelessWidget {
   final String title;
@@ -13,47 +14,58 @@ class AuthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo container
+        // Logo container with Lottie animation
         Center(
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE8F5E9),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                '🐝',
-                style: TextStyle(fontSize: 40),
+          child: Hero(
+            tag: 'auth_logo',
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                // Note: You'll need to add this Lottie file to your assets
+                child: Lottie.asset(
+                  'assets/animations/bee.json',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.contain,
+                  // Fallback to emoji if animation fails to load
+                  errorBuilder: (context, error, stackTrace) => const Text(
+                    '🐝',
+                    style: TextStyle(fontSize: 40),
+                  ),
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: DesignTokens.xl),
         // Title
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimaryColor,
+          style: DesignTokens.titleLarge.copyWith(
+            color: colorScheme.onSurface,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: DesignTokens.s),
         // Subtitle
         Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondaryColor.withOpacity(0.8),
+          style: DesignTokens.bodyLarge.copyWith(
+            color: colorScheme.onSurfaceVariant,
             height: 1.4,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: DesignTokens.xl),
       ],
     );
   }
