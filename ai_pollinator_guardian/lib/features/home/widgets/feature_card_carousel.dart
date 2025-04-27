@@ -41,7 +41,7 @@ class _FeatureCardCarouselState extends State<FeatureCardCarousel> {
               });
             },
             itemBuilder: (context, index) {
-              return EnhancedFeatureCard(
+              return FeatureCard(
                 title: widget.items[index].title,
                 description: widget.items[index].description,
                 imagePath: widget.items[index].imagePath,
@@ -69,13 +69,13 @@ class _FeatureCardCarouselState extends State<FeatureCardCarousel> {
   }
 }
 
-class EnhancedFeatureCard extends StatefulWidget {
+class FeatureCard extends StatefulWidget {
   final String title;
   final String description;
   final String imagePath;
   final VoidCallback onTap;
 
-  const EnhancedFeatureCard({
+  const FeatureCard({
     Key? key,
     required this.title,
     required this.description,
@@ -84,10 +84,10 @@ class EnhancedFeatureCard extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<EnhancedFeatureCard> createState() => _EnhancedFeatureCardState();
+  State<FeatureCard> createState() => _FeatureCardState();
 }
 
-class _EnhancedFeatureCardState extends State<EnhancedFeatureCard> {
+class _FeatureCardState extends State<FeatureCard> {
   bool _isPressed = false;
 
   @override
