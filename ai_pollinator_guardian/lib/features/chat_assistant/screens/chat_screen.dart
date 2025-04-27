@@ -1,4 +1,5 @@
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
+import 'package:ai_pollinator_guardian/widgets/map_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
@@ -51,7 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isNotEmpty) {
       _chatProvider.sendMessage(text);
       _messageController.clear();
-      
+
       // Scroll to bottom after a short delay to allow the UI to update
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     }
@@ -63,10 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: const Text(
           'Pollinator Assistant',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
         ),
         backgroundColor: AppColors.primaryColor,
         elevation: 2,
@@ -86,37 +84,42 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, chatProvider, child) {
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _scrollToBottom(),
+                );
+
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.only(top: 16, bottom: 16),
-                  itemCount: chatProvider.messages.length + (chatProvider.isTyping ? 1 : 0),
+                  itemCount:
+                      chatProvider.messages.length +
+                      (chatProvider.isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     // Show typing indicator as the last item if typing
-                    if (chatProvider.isTyping && index == chatProvider.messages.length) {
+                    if (chatProvider.isTyping &&
+                        index == chatProvider.messages.length) {
                       return const Align(
                         alignment: Alignment.centerLeft,
                         child: TypingIndicator(),
                       );
                     }
-                    
+
                     final message = chatProvider.messages[index];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         MessageBubble(message: message),
-                        
+
                         // Show suggestions if available
                         if (message.suggestions.isNotEmpty && !message.isUser)
                           SuggestionChips(
                             suggestions: message.suggestions,
                             onSuggestionTap: chatProvider.sendSuggestion,
                           ),
-                        
+
                         // Show resources if available
-                        ...message.resources.map((resource) => 
-                          ResourceCard(resource: resource),
+                        ...message.resources.map(
+                          (resource) => ResourceCard(resource: resource),
                         ),
                       ],
                     );
@@ -125,15 +128,13 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          
+
           // Message input area
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
               children: [
@@ -175,23 +176,11 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          
+
           // Add bottom padding to avoid overflow with the FAB
           const SizedBox(height: 4),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/map');
-        },
-        backgroundColor: AppColors.primaryColor,
-        elevation: 4,
-        child: const Text(
-          '🗺️',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 4, // Chat is selected
         onItemSelected: (index) {
@@ -199,6 +188,8 @@ class _ChatScreenState extends State<ChatScreen> {
             Navigator.pushReplacementNamed(context, '/');
           } else if (index == 1) {
             Navigator.pushNamed(context, '/identify');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/map');
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
           }
