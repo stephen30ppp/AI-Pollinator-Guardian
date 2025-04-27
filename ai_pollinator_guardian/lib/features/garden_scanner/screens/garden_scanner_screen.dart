@@ -5,6 +5,10 @@ import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:ai_pollinator_guardian/services/gemini_service.dart';
 import 'package:ai_pollinator_guardian/services/storage_service.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ai_pollinator_guardian/models/garden_model.dart';
+import 'package:ai_pollinator_guardian/services/garden_service.dart';
+
 
 class GardenScannerScreen extends StatefulWidget {
   const GardenScannerScreen({Key? key}) : super(key: key);
@@ -266,21 +270,38 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Garden Analysis',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Evaluate your space for pollinators',
-          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-        ),
-      ],
-    );
-  }
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Garden Analysis',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Evaluate your space for pollinators',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ],
+      ),
+      IconButton(
+        icon: const Icon(Icons.history, color: Colors.green, size: 28),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GardenHistoryPage(userId: 'test_user_id'), // use your correct userId later
+            ),
+          );
+        },
+      ),
+    ],
+  );
+}
+
 
   Widget _buildImageGallery() {
     return Column(
@@ -959,5 +980,117 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
         ),
       ),
     );
+  }
+}
+
+
+class GardenHistoryPage extends StatelessWidget {
+  final String userId;
+  final GardenHelper _gardenHelper = GardenHelper();
+
+  GardenHistoryPage({Key? key, required this.userId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Garden History'),
+        backgroundColor: Colors.green,
+      ),
+      body: StreamBuilder<List<GardenModel>>(
+        stream: _gardenHelper.getGardensByUser(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error loading history'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No garden scans yet.'));
+          }
+
+          final gardens = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: gardens.length,
+            itemBuilder: (context, index) {
+              final garden = gardens[index];
+              return _buildGardenCard(garden);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildGardenCard(GardenModel garden) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: garden.photoUrls.isNotEmpty
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  garden.photoUrls.first,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.photo, color: Colors.grey),
+              ),
+        title: Text(
+          garden.name,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              "Pollinator Score: ${garden.pollinatorScore.toStringAsFixed(1)}",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Scanned: ${_formatDate(garden.createdAt)}",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 }

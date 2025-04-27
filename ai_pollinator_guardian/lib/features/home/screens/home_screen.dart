@@ -144,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
         FeatureCard(
           title: 'Garden Scanner',
           description: 'Analyze your garden and get custom pollinator tips.',
-          imagePath: 'assets/images/garden_scanner.jpg',
+          imagePath: 'assets/images/garden 3.jpg',
           onTap: () {
             Navigator.pushNamed(context, '/garden');
           },
