@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:ai_pollinator_guardian/widgets/map_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
