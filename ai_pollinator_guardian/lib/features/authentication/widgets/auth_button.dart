@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../constants/app_colors.dart';
+import 'package:flutter/services.dart';
+import '../../../constants/design_tokens.dart';
 
 enum AuthButtonType {
   primary,
@@ -25,98 +26,130 @@ class AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AnimatedContainer(
+      duration: DesignTokens.animationNormal,
       width: double.infinity,
-      height: 50,
+      height: DesignTokens.buttonHeight,
+      curve: Curves.easeOut,
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: _getButtonStyle(),
-        child: isLoading
-            ? _loadingIndicator()
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(
-                      icon,
-                      color: _getTextColor(),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: _getTextColor(),
-                    ),
+        onPressed: isLoading 
+            ? null 
+            : () {
+                HapticFeedback.selectionClick();
+                onPressed();
+              },
+        style: _getButtonStyle(colorScheme),
+        child: AnimatedSwitcher(
+          duration: DesignTokens.animationFast,
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: animation.drive(
+                  Tween<double>(begin: 0.95, end: 1.0).chain(
+                    CurveTween(curve: Curves.easeOutCubic),
                   ),
-                ],
+                ),
+                child: child,
               ),
+            );
+          },
+          child: isLoading
+              ? _loadingIndicator(colorScheme)
+              : Row(
+                  key: const ValueKey('button-content'),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(
+                        icon,
+                        color: _getTextColor(colorScheme),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      text,
+                      style: DesignTokens.labelMedium.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _getTextColor(colorScheme),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
-  ButtonStyle _getButtonStyle() {
+  ButtonStyle _getButtonStyle(ColorScheme colorScheme) {
     switch (type) {
       case AuthButtonType.primary:
         return ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryColor,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.6),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          disabledBackgroundColor: colorScheme.primary.withOpacity(0.6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
           ),
           elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: DesignTokens.m),
         );
       case AuthButtonType.secondary:
         return ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentColor,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.accentColor.withOpacity(0.6),
+          backgroundColor: colorScheme.secondary,
+          foregroundColor: colorScheme.onSecondary,
+          disabledBackgroundColor: colorScheme.secondary.withOpacity(0.6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
           ),
           elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: DesignTokens.m),
         );
       case AuthButtonType.outline:
         return ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.primaryColor,
-          disabledBackgroundColor: Colors.white.withOpacity(0.6),
+          backgroundColor: Colors.transparent,
+          foregroundColor: colorScheme.primary,
+          disabledBackgroundColor: Colors.transparent,
+          disabledForegroundColor: colorScheme.primary.withOpacity(0.6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(
-              color: AppColors.primaryColor,
+            borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
+            side: BorderSide(
+              color: colorScheme.primary,
               width: 1.5,
             ),
           ),
           elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: DesignTokens.m),
         );
     }
   }
 
-  Color _getTextColor() {
+  Color _getTextColor(ColorScheme colorScheme) {
     switch (type) {
       case AuthButtonType.primary:
       case AuthButtonType.secondary:
-        return Colors.white;
+        return colorScheme.onPrimary;
       case AuthButtonType.outline:
-        return AppColors.primaryColor;
+        return colorScheme.primary;
     }
   }
 
-  Widget _loadingIndicator() {
+  Widget _loadingIndicator(ColorScheme colorScheme) {
     return SizedBox(
+      key: const ValueKey('loading-indicator'),
       width: 24,
       height: 24,
       child: CircularProgressIndicator(
         strokeWidth: 2.5,
         valueColor: AlwaysStoppedAnimation<Color>(
           type == AuthButtonType.outline
-              ? AppColors.primaryColor
-              : Colors.white,
+              ? colorScheme.primary
+              : colorScheme.onPrimary,
         ),
       ),
     );
