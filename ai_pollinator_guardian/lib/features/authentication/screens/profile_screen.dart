@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import '../../../constants/app_colors.dart';
 import '../../../constants/design_tokens.dart';
 import '../../../services/storage_service.dart';
 import '../../../widgets/loading_overlay.dart';
@@ -18,42 +16,40 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _nameInitialValue = TextEditingController();
   final _usernameInitialValue = TextEditingController();
-  
+
   final StorageService _storageService = StorageService();
-  
+
   File? _profileImage;
   bool _isLoading = false;
   bool _hasChanges = false;
   String? _usernameError;
-  
+
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Animation setup
     _animationController = AnimationController(
       vsync: this,
       duration: DesignTokens.animationNormal,
     );
-    
+
     _slideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
-    
+
     _initializeUserData();
-    
+
     // Listen for changes to enable/disable save button
     _nameController.addListener(_checkForChanges);
     _usernameController.addListener(_checkForChanges);
@@ -63,7 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   void dispose() {
     _nameController.removeListener(_checkForChanges);
     _usernameController.removeListener(_checkForChanges);
-    
+
     _nameController.dispose();
     _usernameController.dispose();
     _nameInitialValue.dispose();
@@ -77,7 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     if (user != null) {
       _nameController.text = user.name;
       _usernameController.text = user.username;
-      
+
       // Store initial values to detect changes
       _nameInitialValue.text = user.name;
       _usernameInitialValue.text = user.username;
@@ -86,15 +82,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   void _checkForChanges() {
     final hasNameChanged = _nameController.text != _nameInitialValue.text;
-    final hasUsernameChanged = _usernameController.text != _usernameInitialValue.text;
-    
-    final newHasChanges = hasNameChanged || hasUsernameChanged || _profileImage != null;
-    
+    final hasUsernameChanged =
+        _usernameController.text != _usernameInitialValue.text;
+
+    final newHasChanges =
+        hasNameChanged || hasUsernameChanged || _profileImage != null;
+
     if (newHasChanges != _hasChanges) {
       setState(() {
         _hasChanges = newHasChanges;
       });
-      
+
       if (_hasChanges && !_animationController.isCompleted) {
         _animationController.forward();
       } else if (!_hasChanges && _animationController.isCompleted) {
@@ -105,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   Future<void> _pickImage() async {
     HapticFeedback.selectionClick();
-    
+
     final image = await _storageService.pickImage(imageQuality: 85);
     if (image != null) {
       setState(() {
@@ -142,17 +140,21 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final RegExp usernameRegex = RegExp(r'^[a-zA-Z0-9_]+$');
     if (!usernameRegex.hasMatch(username)) {
       setState(() {
-        _usernameError = 'Username can only contain letters, numbers, and underscores';
+        _usernameError =
+            'Username can only contain letters, numbers, and underscores';
       });
       return false;
     }
 
     // Check if username is already taken (only if changed)
     final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
-    if (currentUser != null && username.toLowerCase() != currentUser.username.toLowerCase()) {
-      final isAvailable = await Provider.of<AuthProvider>(context, listen: false)
-          .isUsernameAvailable(username);
-      
+    if (currentUser != null &&
+        username.toLowerCase() != currentUser.username.toLowerCase()) {
+      final isAvailable = await Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).isUsernameAvailable(username);
+
       if (!isAvailable) {
         setState(() {
           _usernameError = 'This username is already taken';
@@ -172,9 +174,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    
+
     // Validate username
-    final isUsernameValid = await _validateUsername(_usernameController.text.trim());
+    final isUsernameValid = await _validateUsername(
+      _usernameController.text.trim(),
+    );
     if (!isUsernameValid) return;
 
     setState(() {
@@ -183,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
-    
+
     if (user == null) {
       setState(() {
         _isLoading = false;
@@ -192,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     }
 
     String? photoUrl;
-    
+
     // Upload profile image if changed
     if (_profileImage != null) {
       try {
@@ -206,7 +210,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           setState(() {
             _isLoading = false;
           });
-          ErrorBanner.showErrorSnackBar(context, message: 'Failed to upload image: $e');
+          ErrorBanner.showErrorSnackBar(
+            context,
+            message: 'Failed to upload image: $e',
+          );
           return;
         }
       }
@@ -227,16 +234,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
     if (success && mounted) {
       _animationController.reverse();
-      
+
       // Update initial values after successful update
       _nameInitialValue.text = _nameController.text;
       _usernameInitialValue.text = _usernameController.text;
-      
+
       setState(() {
         _hasChanges = false;
         _profileImage = null;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -261,23 +268,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   void _confirmSignOut() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sign Out'),
+            content: const Text('Are you sure you want to sign out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _signOut();
+                },
+                child: const Text('SIGN OUT'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _signOut();
-            },
-            child: const Text('SIGN OUT'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -285,12 +293,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     setState(() {
       _isLoading = true;
     });
-    
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.signOut();
-    
+
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+      // Replace the entire navigation stack instead of just pushing
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false, // This removes all previous routes
+      );
     }
   }
 
@@ -300,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final user = authProvider.user;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     if (user == null) {
       return Scaffold(
         body: Center(
@@ -325,19 +338,20 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               // Show a simple help dialog
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Profile Help'),
-                  content: const Text(
-                    'This is your profile page where you can update your display name, username, and profile picture. '
-                    'Your activity statistics are shown at the bottom.'
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('GOT IT'),
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Profile Help'),
+                      content: const Text(
+                        'This is your profile page where you can update your display name, username, and profile picture. '
+                        'Your activity statistics are shown at the bottom.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('GOT IT'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               );
             },
           ),
@@ -355,11 +369,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: DesignTokens.m),
-                    
+
                     // Profile picture
                     _buildProfilePicture(user.photoUrl, colorScheme),
                     const SizedBox(height: DesignTokens.xl),
-                    
+
                     // User info
                     Align(
                       alignment: Alignment.centerLeft,
@@ -371,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       ),
                     ),
                     const SizedBox(height: DesignTokens.m),
-                    
+
                     // Display name field
                     TextFormField(
                       controller: _nameController,
@@ -392,7 +406,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       },
                     ),
                     const SizedBox(height: DesignTokens.m),
-                    
+
                     // Username field
                     TextFormField(
                       controller: _usernameController,
@@ -411,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       },
                     ),
                     const SizedBox(height: DesignTokens.m),
-                    
+
                     // Email (disabled)
                     TextFormField(
                       enabled: false,
@@ -425,15 +439,15 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       ),
                     ),
                     const SizedBox(height: DesignTokens.xl),
-                    
+
                     // Divider
                     const Divider(height: DesignTokens.m),
                     const SizedBox(height: DesignTokens.m),
-                    
+
                     // Activity statistics section
                     _buildStatisticsSection(user, colorScheme),
                     const SizedBox(height: DesignTokens.xl),
-                    
+
                     // Sign out button
                     AuthButton(
                       text: 'Sign Out',
@@ -446,7 +460,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 ),
               ),
             ),
-            
+
             // Floating Save Button - Only appears when changes are made
             Positioned(
               bottom: DesignTokens.l,
@@ -464,12 +478,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 },
                 child: FloatingActionButton.extended(
                   onPressed: _hasChanges ? _updateProfile : null,
-                  backgroundColor: _hasChanges 
-                      ? colorScheme.primary 
-                      : colorScheme.surfaceVariant,
-                  foregroundColor: _hasChanges 
-                      ? colorScheme.onPrimary 
-                      : colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  backgroundColor:
+                      _hasChanges
+                          ? colorScheme.primary
+                          : colorScheme.surfaceVariant,
+                  foregroundColor:
+                      _hasChanges
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant.withOpacity(0.5),
                   elevation: 4,
                   icon: const Icon(Icons.save_rounded),
                   label: const Text('Save Changes'),
@@ -491,29 +507,28 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: colorScheme.surfaceVariant,
-            border: Border.all(
-              color: colorScheme.primary,
-              width: 3,
-            ),
-            image: _profileImage != null
-                ? DecorationImage(
-                    image: FileImage(_profileImage!),
-                    fit: BoxFit.cover,
-                  )
-                : photoUrl != null
+            border: Border.all(color: colorScheme.primary, width: 3),
+            image:
+                _profileImage != null
                     ? DecorationImage(
-                        image: NetworkImage(photoUrl),
-                        fit: BoxFit.cover,
-                      )
+                      image: FileImage(_profileImage!),
+                      fit: BoxFit.cover,
+                    )
+                    : photoUrl != null
+                    ? DecorationImage(
+                      image: NetworkImage(photoUrl),
+                      fit: BoxFit.cover,
+                    )
                     : null,
           ),
-          child: photoUrl == null && _profileImage == null
-              ? Icon(
-                  Icons.person_rounded,
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                )
-              : null,
+          child:
+              photoUrl == null && _profileImage == null
+                  ? Icon(
+                    Icons.person_rounded,
+                    size: 64,
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  )
+                  : null,
         ),
         Positioned(
           bottom: 0,
@@ -574,7 +589,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, ColorScheme colorScheme) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    ColorScheme colorScheme,
+  ) {
     return Expanded(
       child: Card(
         color: colorScheme.secondaryContainer,
@@ -587,11 +607,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                color: colorScheme.secondary,
-                size: 24,
-              ),
+              Icon(icon, color: colorScheme.secondary, size: 24),
               const SizedBox(height: DesignTokens.s),
               Text(
                 value,

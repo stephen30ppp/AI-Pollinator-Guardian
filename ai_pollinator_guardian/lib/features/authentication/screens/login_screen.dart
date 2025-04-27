@@ -91,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: colorScheme.onBackground),
