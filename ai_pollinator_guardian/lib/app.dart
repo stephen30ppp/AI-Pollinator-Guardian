@@ -1,3 +1,5 @@
+import 'package:ai_pollinator_guardian/features/pollinator_id/screens/pollinator_history.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'features/community_map/providers/community_map_provider.dart';
@@ -7,7 +9,8 @@ import 'features/chat_assistant/screens/chat_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/pollinator_id/screens/pollinator_id_screen.dart';
 import 'features/garden_scanner/screens/garden_scanner_screen.dart';
-import 'features/authentication/providers/auth_provider.dart';
+import 'features/authentication/providers/auth_provider.dart'
+    as CustomAuthProvider;
 import 'features/authentication/screens/login_screen.dart';
 import 'features/authentication/screens/signup_screen.dart';
 import 'features/authentication/screens/forgot_password_screen.dart';
@@ -23,7 +26,9 @@ class PollinatorGuardianApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+          create: (_) => CustomAuthProvider.AuthProvider(),
+        ),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => CommunityMapProvider()),
       ],
@@ -57,6 +62,10 @@ class PollinatorGuardianApp extends StatelessWidget {
           '/garden': (context) => const GardenScannerScreen(),
           '/identify': (context) => const PollinatorIdScreen(),
           '/map': (context) => const CommunityMapScreen(),
+          '/history':
+              (context) => PollinatorHistory(
+                userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+              ),
         },
       ),
     );
