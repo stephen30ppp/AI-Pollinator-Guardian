@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:ai_pollinator_guardian/services/pollinator_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/services/storage_service.dart';
@@ -100,10 +102,22 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
         _isLoading = true;
       });
 
-      final imageBytes = await _storageService.fileToBytes(image);
+      // final imageBytes = await _storageService.fileToBytes(image);
+      // if (imageBytes == null) {
+      //   throw Exception('Failed to process image');
+      // }
+
+      ///
+      final imageBytes = await _storageService.fileToBytes(
+        image,
+        format: 'jpeg', // Ensure the format is passed correctly
+      );
       if (imageBytes == null) {
         throw Exception('Failed to process image');
       }
+
+      ///
+      ///
 
       // Create a prompt for structured JSON response
       final prompt = TextPart(
@@ -648,43 +662,44 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                     onPressed: () async {
                       try {
                         final userId =
-                            FirebaseService()
-                                .currentUid; // Replace with your Firebase Auth user ID retrieval logic
+                            FirebaseAuth
+                                .instance
+                                .currentUser
+                                ?.uid; // Get the current user ID
                         if (userId == null) {
                           throw Exception('User not logged in');
                         }
 
-                        // Ensure the image is uploaded to Firebase Storage and get the download URL
-                        final String? downloadUrl = await _storageService
-                            .uploadBytes(
-                              bytes: await _selectedImage!.readAsBytes(),
-                              folder: 'pollinators',
-                              fileName:
-                                  '${DateTime.now().toIso8601String()}.jpg',
+                        // Upload the image to Firebase Storage and get the download URL
+                        final String fileName =
+                            '${DateTime.now().toIso8601String()}.jpg';
+                        final String folderPath = 'users/$userId/sightings';
+                        final String? photoUrl = await _storageService
+                            .uploadFile(
+                              file: _selectedImage!,
+                              folder: folderPath,
+                              fileName: fileName,
                             );
 
-                        if (downloadUrl == null) {
+                        if (photoUrl == null) {
                           throw Exception(
                             'Failed to upload image to Firebase Storage',
                           );
                         }
-                        //
 
+                        // Prepare sighting data
                         final sightingData = {
                           'pollinatorId':
                               _identificationResult!['identification']['scientificName'],
                           'pollinatorName':
                               _identificationResult!['identification']['commonName'],
-                          'imageUrl':
-                              _selectedImage != null
-                                  ? _selectedImage!.path
-                                  : '',
+                          'imageUrl': photoUrl, // Save the photo URL
                           'confidence':
                               _identificationResult!['identification']['confidence'],
                           'timestamp': DateTime.now(),
-                          'userId': userId,
                         };
 
+                        // Save the sighting data to Firestore
                         await FirebaseFirestore.instance
                             .collection('users')
                             .doc(userId)
