@@ -259,6 +259,8 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
         onItemSelected: (index) {
           if (index == 0) {
             Navigator.pushReplacementNamed(context, '/');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/map');
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
           } else if (index == 4) {

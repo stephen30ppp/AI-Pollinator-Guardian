@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../constants/app_colors.dart';
+import '../../../constants/design_tokens.dart';
 
 class AuthSeparator extends StatelessWidget {
   final String text;
@@ -11,29 +11,38 @@ class AuthSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Row(
       children: [
         Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
-            thickness: 1,
+            color: colorScheme.outline.withOpacity(0.5),
+            thickness: 0.8,
+            indent: 8,
+            endIndent: 8,
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondaryColor.withOpacity(0.8),
+          padding: const EdgeInsets.symmetric(horizontal: DesignTokens.m),
+          child: Opacity(
+            opacity: 0.6,
+            child: Text(
+              text,
+              style: DesignTokens.bodyMedium.copyWith(
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
-            thickness: 1,
+            color: colorScheme.outline.withOpacity(0.5),
+            thickness: 0.8,
+            indent: 8,
+            endIndent: 8,
           ),
         ),
       ],

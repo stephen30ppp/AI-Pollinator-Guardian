@@ -15,6 +15,9 @@ class CommunityMapScreen extends StatefulWidget {
 class _CommunityMapScreenState extends State<CommunityMapScreen> {
   GoogleMapController? _mapController;
 
+  bool _showSearch = false;
+  final TextEditingController _searchController = TextEditingController();
+
   // Default center location (can be adjusted based on user's location)
   static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
 
@@ -43,6 +46,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _mapController?.dispose();
     debugPrint('CommunityMapScreen: disposed');
     super.dispose();
@@ -263,8 +267,10 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
             onPressed: () {
-              debugPrint('CommunityMapScreen: Search button pressed');
-              // Implement search functionality
+              setState(() {
+                _showSearch = !_showSearch;
+              });
+              debugPrint('CommunityMapScreen: Search toggle: $_showSearch');
             },
           ),
         ],
@@ -297,9 +303,62 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                 compassEnabled: false,
               ),
 
+              // Search Bar (conditionally shown)
+              if (_showSearch)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search, color: Colors.grey[600]),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: const InputDecoration(
+                                hintText: 'Search pollinators...',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              onSubmitted: (value) {
+                                provider.searchPollinators(value);
+                                setState(() {
+                                  _showSearch = false;
+                                });
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              setState(() {
+                                _showSearch = false;
+                                _searchController.clear();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               // Stats Row
               Positioned(
-                top: 16,
+                top: _showSearch ? 80 : 16,
                 left: 16,
                 right: 16,
                 child: Card(
@@ -339,7 +398,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
               // Map Legend
               Positioned(
-                top: 16,
+                top: _showSearch ? 150 : 86,
                 right: 16,
                 child: Card(
                   elevation: 4,
@@ -432,10 +491,45 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                 ),
               ),
 
+              // Filter Button (Bottom Left)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      _showFilters ? Icons.close : Icons.filter_list,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _showFilters = !_showFilters;
+                      });
+                      debugPrint(
+                        'CommunityMapScreen: Filter toggle: $_showFilters',
+                      );
+                    },
+                  ),
+                ),
+              ),
+
               // Filter Sheet (Conditionally shown)
               if (_showFilters)
                 Positioned(
-                  top: 80,
+                  top: _showSearch ? 150 : 86,
                   left: 16,
                   right: 16,
                   child: _buildFilterCard(provider),
@@ -444,20 +538,6 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _showFilters = !_showFilters;
-          });
-          debugPrint('CommunityMapScreen: Filter toggle: $_showFilters');
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: Icon(
-          _showFilters ? Icons.close : Icons.filter_list,
-          color: Colors.white,
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 2, // Map is selected
         onItemSelected: (index) {
@@ -465,6 +545,8 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
             Navigator.pushReplacementNamed(context, '/');
           } else if (index == 1) {
             Navigator.pushNamed(context, '/identify');
+          } else if (index == 2) {
+            // Already on map screen, do nothing
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
           } else if (index == 4) {
