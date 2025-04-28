@@ -871,12 +871,11 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
 
     // Extract data from the Gemini response (_analysis)
     final Map<String, dynamic> aiResponse = _analysis!;
-    final List<String> photoUrls = _gardenImages.map((image) => image.path).toList();
 
     // Call saveGardenProfile
     final bool success = await UserDataService().saveGardenProfile(
       aiResponse: aiResponse,
-      photoUrls: photoUrls,
+      gardenImages: _gardenImages, // Pass the list of File objects
     );
 
     // Show feedback to the user
@@ -1049,135 +1048,140 @@ class GardenHistoryPage extends StatelessWidget {
   }
 
   Widget _buildGardenCard(Map<String, dynamic> garden) {
-    final pollinatorScore = garden['pollinator_score'];
-    final analysis = garden['analysis'] as List;
-    final recommendedPlants = garden['recommended_plants'] as List;
-    final actionPlan = garden['action_plan'] as List;
-    String createdAt = 'Unknown Date';
-      if (garden['createdAt'] != null) {
-        try {
-          createdAt = _formatDate(DateTime.parse(garden['createdAt']));
-        } catch (e) {
-        print('Error parsing createdAt: $e');
-     }
+  final pollinatorScore = garden['pollinator_score'];
+  final analysis = garden['analysis'] as List;
+  final recommendedPlants = garden['recommended_plants'] as List;
+  final actionPlan = garden['action_plan'] as List;
+  String createdAt = 'Unknown Date';
+
+  if (garden['createdAt'] != null) {
+    try {
+      createdAt = _formatDate(DateTime.parse(garden['createdAt']));
+    } catch (e) {
+      print('Error parsing createdAt: $e');
     }
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with photo
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
-            child: garden['photos'] != null && (garden['photos'] as List).isNotEmpty
-                ? Image.network(
-                    (garden['photos'] as List).first,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    height: 180,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.photo, size: 60, color: Colors.grey),
-                  ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Garden Name
-                Text(
-                  garden['name'] ?? 'Unnamed Garden',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Pollinator Score
-                if (pollinatorScore != null)
-                  Row(
-                    children: [
-                      _buildScoreRing(pollinatorScore['percentage']),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              pollinatorScore['category'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              pollinatorScore['description'],
-                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 16),
-                // Analysis Section
-                const Text(
-                  'Analysis:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...analysis.map((item) {
-                  return _buildAnalysisItem(
-                    category: item['category'] as String,
-                    status: item['status'] as String,
-                    description: item['description'] as String,
-                  );
-                }),
-                const SizedBox(height: 16),
-                // Recommended Plants Section
-                const Text(
-                  'Recommended Plants:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...recommendedPlants.map((plant) {
-                  return _buildPlantItem(
-                    name: plant['name'] as String,
-                    description: plant['description'] as String,
-                    tags: List<String>.from(plant['tags']),
-                  );
-                }),
-                const SizedBox(height: 16),
-                // Action Plan Section
-                const Text(
-                  'Action Plan:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...actionPlan.map((action) {
-                  return _buildActionItem(
-                    title: action['title'] as String,
-                    progress: action['progress'] as int,
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
+
+  return Card(
+    elevation: 2,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    margin: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with photo
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+          ),
+          child: garden['photos'] != null && (garden['photos'] as List).isNotEmpty
+              ? Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: NetworkImage((garden['photos'] as List).first),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 180,
+                  width: double.infinity,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.photo, size: 60, color: Colors.grey),
+                ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Garden Name
+              Text(
+                garden['name'] ?? 'Unnamed Garden',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Pollinator Score
+              if (pollinatorScore != null)
+                Row(
+                  children: [
+                    _buildScoreRing(pollinatorScore['percentage']),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            pollinatorScore['category'],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            pollinatorScore['description'],
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              // Analysis Section
+              const Text(
+                'Analysis:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...analysis.map((item) {
+                return _buildAnalysisItem(
+                  category: item['category'] as String,
+                  status: item['status'] as String,
+                  description: item['description'] as String,
+                );
+              }),
+              const SizedBox(height: 16),
+              // Recommended Plants Section
+              const Text(
+                'Recommended Plants:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...recommendedPlants.map((plant) {
+                return _buildPlantItem(
+                  name: plant['name'] as String,
+                  description: plant['description'] as String,
+                  tags: List<String>.from(plant['tags']),
+                );
+              }),
+              const SizedBox(height: 16),
+              // Action Plan Section
+              const Text(
+                'Action Plan:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...actionPlan.map((action) {
+                return _buildActionItem(
+                  title: action['title'] as String,
+                  progress: action['progress'] as int,
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildScoreRing(int percentage) {
     return Container(

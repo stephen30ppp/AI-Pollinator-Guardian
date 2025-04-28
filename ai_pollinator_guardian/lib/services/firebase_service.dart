@@ -20,6 +20,9 @@ class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // To expose Firestore
+  FirebaseFirestore get firestore => _db;
+
   // region --- AUTH STATE STREAM ---
   /// Expose auth changes to Providers / Riverpod
   Stream<User?> get authStateChanges => _auth.authStateChanges();
