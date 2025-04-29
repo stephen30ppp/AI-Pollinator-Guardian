@@ -260,14 +260,6 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           _isLoading
               ? _buildLoadingView()
               : (_isCameraView ? _buildCameraView() : _buildResultsView()),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/map');
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: const Text('🗺️', style: TextStyle(fontSize: 24)),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 1, // Identify is selected
         onItemSelected: (index) {
