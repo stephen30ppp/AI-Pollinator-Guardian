@@ -1,10 +1,15 @@
 import 'dart:io';
+import 'package:ai_pollinator_guardian/services/pollinator_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/services/storage_service.dart';
 import 'package:ai_pollinator_guardian/services/gemini_service.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:ai_pollinator_guardian/services/firebase_service.dart';
 
 class PollinatorIdScreen extends StatefulWidget {
   const PollinatorIdScreen({Key? key}) : super(key: key);
@@ -50,14 +55,46 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           _isCameraView = false; // Switch to results view
         });
 
+        // Convert the image to bytes in JPEG format
+        final imageBytes = await _storageService.fileToBytes(
+          image,
+          format: 'jpeg',
+        );
+        if (imageBytes == null) {
+          throw Exception('Failed to process image');
+        }
+
+        // Upload the image to Firebase Storage
+        final String fileName = '${DateTime.now().toIso8601String()}.jpg';
+        final String? downloadUrl = await _storageService.uploadBytes(
+          bytes: imageBytes,
+          folder: 'pollinators',
+          fileName: fileName,
+          metadata: SettableMetadata(
+            contentType: 'image/jpeg',
+          ), // Set MIME type
+        );
+
+        if (downloadUrl == null) {
+          throw Exception('Failed to upload image to Firebase Storage');
+        }
+
+        // Log the download URL for testing
+        debugPrint('Image uploaded successfully. Download URL: $downloadUrl');
+
+        // Proceed with pollinator identification
         await _identifyPollinator(image);
       }
     } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error capturing image: $e')));
     }
   }
+  // end of modification to include the image upload process
 
   Future<void> _identifyPollinator(File image) async {
     try {
@@ -65,10 +102,22 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
         _isLoading = true;
       });
 
-      final imageBytes = await _storageService.fileToBytes(image);
+      // final imageBytes = await _storageService.fileToBytes(image);
+      // if (imageBytes == null) {
+      //   throw Exception('Failed to process image');
+      // }
+
+      ///
+      final imageBytes = await _storageService.fileToBytes(
+        image,
+        format: 'jpeg', // Ensure the format is passed correctly
+      );
       if (imageBytes == null) {
         throw Exception('Failed to process image');
       }
+
+      ///
+      ///
 
       // Create a prompt for structured JSON response
       final prompt = TextPart(
@@ -211,6 +260,14 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           _isLoading
               ? _buildLoadingView()
               : (_isCameraView ? _buildCameraView() : _buildResultsView()),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/map');
+        },
+        backgroundColor: AppColors.primaryColor,
+        child: const Text('🗺️', style: TextStyle(fontSize: 24)),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 1, // Identify is selected
         onItemSelected: (index) {
@@ -602,11 +659,63 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {
-                      // Save sighting functionality would go here
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sighting saved!')),
-                      );
+                    onPressed: () async {
+                      try {
+                        final userId =
+                            FirebaseAuth
+                                .instance
+                                .currentUser
+                                ?.uid; // Get the current user ID
+                        if (userId == null) {
+                          throw Exception('User not logged in');
+                        }
+
+                        // Upload the image to Firebase Storage and get the download URL
+                        final String fileName =
+                            '${DateTime.now().toIso8601String()}.jpg';
+                        final String folderPath = 'users/$userId/sightings';
+                        final String? photoUrl = await _storageService
+                            .uploadFile(
+                              file: _selectedImage!,
+                              folder: folderPath,
+                              fileName: fileName,
+                            );
+
+                        if (photoUrl == null) {
+                          throw Exception(
+                            'Failed to upload image to Firebase Storage',
+                          );
+                        }
+
+                        // Prepare sighting data
+                        final sightingData = {
+                          'pollinatorId':
+                              _identificationResult!['identification']['scientificName'],
+                          'pollinatorName':
+                              _identificationResult!['identification']['commonName'],
+                          'imageUrl': photoUrl, // Save the photo URL
+                          'confidence':
+                              _identificationResult!['identification']['confidence'],
+                          'timestamp': DateTime.now(),
+                        };
+
+                        // Save the sighting data to Firestore
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .collection('sightings')
+                            .add(sightingData);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Sighting saved successfully!'),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error saving sighting: $e')),
+                        );
+                      }
                     },
                     child: const Text(
                       'Save Sighting',
@@ -621,21 +730,67 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                 const SizedBox(height: 12),
 
                 Center(
-                  child: GestureDetector(
-                    onTap: _resetIdentification,
-                    child: const Text(
-                      'Take Another Photo',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.primaryColor,
-                        fontWeight: FontWeight.w500,
+                  child: Column(
+                    children: [
+                      // "Take Another Photo" button
+                      SizedBox(
+                        width:
+                            double
+                                .infinity, // Match the width of "Save Sighting"
+                        child: ElevatedButton(
+                          onPressed: _resetIdentification,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                AppColors
+                                    .primaryColor, // Match color with "Save Sighting"
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Take Another Photo',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16), // Add spacing between buttons
+                      // "Pollinator Identification History" button
+                      SizedBox(
+                        width:
+                            double
+                                .infinity, // Match the width of "Save Sighting"
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/history',
+                            ); // Navigate to history screen
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Pollinator Identification History',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 30),
-
                 // Past Identifications Section
                 if (_pastIdentifications.isNotEmpty &&
                     _pastIdentifications.length > 1) ...[

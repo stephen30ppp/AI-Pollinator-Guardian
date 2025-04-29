@@ -22,7 +22,9 @@ class UserModel {
       id: json['id'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
-      username: json['username'] as String? ?? '', // For backward compatibility with existing users
+      username:
+          json['username'] as String? ??
+          '', // For backward compatibility with existing users
       photoUrl: json['photoUrl'] as String?,
       sightings: List<String>.from(json['sightings'] ?? []),
       gardens: List<String>.from(json['gardens'] ?? []),
