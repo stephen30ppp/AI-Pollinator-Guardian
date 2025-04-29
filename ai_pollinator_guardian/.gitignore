@@ -48,3 +48,8 @@ app.*.map.json
 /android/app/google-services.json
 /lib/firebase_options.dart
 firebase.json
+
+.idea/workspace.xml
+.vscode/settings.json
+ai_pollinator_guardian/android/app/src/main/AndroidManifest.xml
+ai_pollinator_guardian/pubspec.lock
