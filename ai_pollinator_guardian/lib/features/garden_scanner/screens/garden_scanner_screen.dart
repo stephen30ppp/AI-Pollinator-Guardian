@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
@@ -21,7 +22,7 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
   final GeminiService _geminiService = GeminiService();
 
   // State variables
-  List<File> _gardenImages = [];
+  late List<File> _gardenImages = [];
   bool _isAnalyzing = false;
   String _analysisError = '';
 
@@ -275,7 +276,7 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Evaluate your space for pollinators',
+              'Evaluate your garden for pollinators',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
@@ -287,9 +288,7 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
               context,
               MaterialPageRoute(
                 builder:
-                    (context) => GardenHistoryPage(
-                      userId: 'test_user_id',
-                    ), // use your correct userId later
+                    (context) => GardenHistoryPage(),
               ),
             );
           },
@@ -588,26 +587,24 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     );
   }
 
-  Widget _buildScoreRing(int percentage) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: SweepGradient(
-          startAngle: 3 * 3.14 / 2,
-          endAngle: 7 * 3.14 / 2,
-          colors: [
-            AppColors.primaryColor,
-            AppColors.primaryColor,
-            Colors.grey[300]!,
-            Colors.grey[300]!,
-          ],
-          stops: [0.0, percentage / 100, percentage / 100, 1.0],
+ Widget _buildScoreRing(int percentage) {
+  Color ringColor = _getRingColor(percentage);
+
+  return SizedBox(
+    width: 80,
+    height: 80,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        CustomPaint(
+          size: Size(80, 80),
+          painter: ScoreRingPainter(
+            percentage: percentage,
+            activeColor: ringColor,
+            inactiveColor: Colors.grey[300]!,
+          ),
         ),
-      ),
-      child: Center(
-        child: Container(
+        Container(
           width: 64,
           height: 64,
           decoration: const BoxDecoration(
@@ -620,14 +617,15 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
+                color: ringColor,
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildAnalysisItem({
     required String category,
@@ -875,7 +873,7 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     // Call saveGardenProfile
     final bool success = await UserDataService().saveGardenProfile(
       aiResponse: aiResponse,
-      gardenImages: _gardenImages, // Pass the list of File objects
+      gardenImages: _gardenImages, photoUrls: [], // Pass the list of File objects
     );
 
     // Show feedback to the user
@@ -1001,13 +999,22 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
       ),
     );
   }
+
+  Color _getRingColor(int percentage) {
+   if (percentage < 30) {
+    return Colors.red;
+  } else if (percentage < 70) {
+    return Colors.yellow[700]!;
+  } else {
+    return Colors.green;
+  }
+}
 }
 
 class GardenHistoryPage extends StatelessWidget {
-  final String userId;
   final UserDataService _userDataService = UserDataService();
 
-  GardenHistoryPage({Key? key, required this.userId}) : super(key: key);
+  GardenHistoryPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1045,6 +1052,8 @@ class GardenHistoryPage extends StatelessWidget {
         },
       ),
     );
+
+  
   }
 
   Widget _buildGardenCard(Map<String, dynamic> garden) {
@@ -1184,27 +1193,25 @@ class GardenHistoryPage extends StatelessWidget {
 }
 
   Widget _buildScoreRing(int percentage) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: SweepGradient(
-          startAngle: 3 * 3.14 / 2,
-          endAngle: 7 * 3.14 / 2,
-          colors: [
-            AppColors.primaryColor,
-            AppColors.primaryColor,
-            Colors.grey[300]!,
-            Colors.grey[300]!,
-          ],
-          stops: [0.0, percentage / 100, percentage / 100, 1.0],
+  Color ringColor = _getRingColor(percentage);
+
+  return SizedBox(
+    width: 80,
+    height: 80,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        CustomPaint(
+          size: Size(80, 80),
+          painter: ScoreRingPainter(
+            percentage: percentage,
+            activeColor: ringColor,
+            inactiveColor: Colors.grey[300]!,
+          ),
         ),
-      ),
-      child: Center(
-        child: Container(
-          width: 48,
-          height: 48,
+        Container(
+          width: 64,
+          height: 64,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
@@ -1213,16 +1220,18 @@ class GardenHistoryPage extends StatelessWidget {
             child: Text(
               '$percentage%',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
+                color: ringColor,
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
+
 
   Widget _buildAnalysisItem({
     required String category,
@@ -1345,4 +1354,60 @@ class GardenHistoryPage extends StatelessWidget {
   String _formatDate(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
+
+  Color _getRingColor(int percentage) {
+  if (percentage < 30) {
+    return Colors.red;
+  } else if (percentage < 70) {
+    return Colors.yellow[700]!;
+  } else {
+    return Colors.green;
+  }
+}
+}
+
+class ScoreRingPainter extends CustomPainter {
+  final int percentage;
+  final Color activeColor;
+  final Color inactiveColor;
+
+  ScoreRingPainter({
+    required this.percentage,
+    required this.activeColor,
+    required this.inactiveColor,
+  });
+
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    double strokeWidth = 8.0;
+    Offset center = Offset(size.width / 2, size.height / 2);
+    double radius = (size.width - strokeWidth) / 2;
+
+    Paint backgroundPaint = Paint()
+      ..color = inactiveColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    Paint foregroundPaint = Paint()
+      ..color = activeColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    double sweepAngle = 2 * math.pi * (percentage / 100);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      -sweepAngle,
+      false,
+      foregroundPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

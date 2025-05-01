@@ -13,7 +13,7 @@ class UserDataService {
   /// Save a garden profile under the user's gardens collection
   Future<bool> saveGardenProfile({
     required Map<String, dynamic> aiResponse,
-  required List<String> photoUrls,
+  required List<String> photoUrls, required List<File> gardenImages,
   }) async {
     try {
       // Get the current user's UID
