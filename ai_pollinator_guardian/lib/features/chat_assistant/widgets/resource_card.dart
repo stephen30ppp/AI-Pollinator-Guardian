@@ -6,9 +6,9 @@ class ResourceCard extends StatelessWidget {
   final ChatResource resource;
   
   const ResourceCard({
-    Key? key,
+    super.key,
     required this.resource,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

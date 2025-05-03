@@ -9,7 +9,7 @@ import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/resource_
 import 'package:ai_pollinator_guardian/features/chat_assistant/widgets/typing_indicator.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({Key? key}) : super(key: key);
+  const ChatScreen({super.key});
 
   @override
   _ChatScreenState createState() => _ChatScreenState();

@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';  // 添加导入以读取文件
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/models/chat_message_model.dart';
 import 'package:uuid/uuid.dart';
+// import 'package:google_generative_ai/google_generative_ai.dart' as ga ;
 
+// import 'package:google_generative_ai/google_generative_ai.dart';
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
   factory GeminiService() => _instance;
@@ -234,7 +237,7 @@ class GeminiService {
             String originalText = textPart.text;
             
             // Modify the prompt to emphasize we want one result
-            String modifiedText = originalText + "\n\nIMPORTANT: Provide only ONE identification with the highest confidence. Do NOT return a list of multiple identifications.";
+            String modifiedText = "$originalText\n\nIMPORTANT: Provide only ONE identification with the highest confidence. Do NOT return a list of multiple identifications.";
             
             // Replace the original TextPart with the modified one
             content[0].parts[i] = TextPart(modifiedText);
@@ -294,6 +297,42 @@ class GeminiService {
         'error': true,
         'message': 'Failed to analyze: $e',
       };
+    }
+  }
+
+  /// Analyse a local image and return an AI answer as ChatMessageModel
+  Future<ChatMessageModel> analyzeImage(
+    String imagePath, {
+    String prompt =
+        'Identify and describe the pollinator (and any plants) in this photo.',
+  }) async {
+    if (!_isInitialized) await initialize();
+    try {
+      final bytes      = await File(imagePath).readAsBytes();
+      final imagePart  = InlineDataPart(
+         'image/jpeg',
+         bytes,
+      );
+      final promptPart = TextPart(prompt);
+      final content    = Content.multi([imagePart, promptPart]);
+
+      final resp = await _model.generateContent([content]);
+
+      return ChatMessageModel(
+        id: uuid.v4(),
+        text: resp.text ??
+            "I'm sorry, I couldn't analyse that image right now.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('[Gemini] image analyse error: $e');
+      return ChatMessageModel(
+        id: uuid.v4(),
+        text: "Image analysis failed, please try again later.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
     }
   }
 }

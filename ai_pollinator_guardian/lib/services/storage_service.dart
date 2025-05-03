@@ -495,7 +495,7 @@ class StorageService {
           await item.delete();
           deletedCount++;
           debugPrint(
-            '✅ Deleted file ${deletedCount}/${items.length}: ${item.fullPath}',
+            '✅ Deleted file $deletedCount/${items.length}: ${item.fullPath}',
           );
         } catch (e) {
           debugPrint('⚠️ Error deleting file: ${item.fullPath} - $e');

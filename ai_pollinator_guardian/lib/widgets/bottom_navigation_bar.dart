@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
+import 'package:ai_pollinator_guardian/utils/global.dart'; // 导入全局变量
+import 'package:provider/provider.dart'; // 导入 Provider
+import 'package:ai_pollinator_guardian/features/pollinator_id/providers/identify_provider.dart'; // 导入 IdentifyProvider
+import 'package:ai_pollinator_guardian/features/garden_scanner/providers/garden_scanner_provider.dart'; // 导入 GardenScannerProvider
 
 class PollinatorBottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemSelected;
 
   const PollinatorBottomNavBar({
-    Key? key,
+    super.key,
     required this.selectedIndex,
     required this.onItemSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +46,10 @@ class PollinatorBottomNavBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(Icons.home_rounded, 'Home', 0),
-              _buildNavItem(Icons.camera_alt_rounded, 'Identify', 1),
-              _buildNavItem(Icons.map_rounded, 'Map', 2),
-              _buildNavItem(Icons.local_florist_rounded, 'Garden', 3),
-              _buildNavItem(Icons.chat_bubble_outline_rounded, 'Chat', 4),
+              _buildNavItem(context, Icons.home_rounded, 'Home', 0),
+              _buildNavItem(context, Icons.camera_alt_rounded, 'Identify', 1),
+              _buildNavItem(context, Icons.map_rounded, 'Map', 2),
+              _buildNavItem(context, Icons.local_florist_rounded, 'Garden', 3),
             ],
           ),
         ),
@@ -54,12 +57,24 @@ class PollinatorBottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(BuildContext context, IconData icon, String label, int index) {
     final bool isActive = selectedIndex == index;
 
     return Expanded(
       child: InkWell(
-        onTap: () => onItemSelected(index),
+        onTap: () {
+          // 按照_currentIdx是离开前的tab的逻辑，这里的selectedIndex就是当前要离开的tab
+          final int _currentIdx = selectedIndex;
+          final int newIdx = index;
+          
+          // 如果当前是 Garden (3)，即将离开 → 清零
+          if (_currentIdx == 3) context.read<GardenScannerProvider>().resetAnalysis();
+          // 如果当前是 Identify (1)，即将离开 → 清零
+          if (_currentIdx == 1) context.read<IdentifyProvider>().resetResult();
+
+          onItemSelected(newIdx);
+          currentTab.value = newIdx; // 更新全局选中索引
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,

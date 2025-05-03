@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:ai_pollinator_guardian/services/pollinator_service.dart';
+import 'package:ai_pollinator_guardian/widgets/chat_panel.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -9,10 +9,13 @@ import 'package:ai_pollinator_guardian/services/gemini_service.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
-import 'package:ai_pollinator_guardian/services/firebase_service.dart';
+import 'package:ai_pollinator_guardian/widgets/chat_fab.dart';
+import 'package:ai_pollinator_guardian/features/chat_assistant/providers/chat_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:ai_pollinator_guardian/features/pollinator_id/providers/identify_provider.dart';
 
 class PollinatorIdScreen extends StatefulWidget {
-  const PollinatorIdScreen({Key? key}) : super(key: key);
+  const PollinatorIdScreen({super.key});
 
   @override
   _PollinatorIdScreenState createState() => _PollinatorIdScreenState();
@@ -21,6 +24,7 @@ class PollinatorIdScreen extends StatefulWidget {
 class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
   final StorageService _storageService = StorageService();
   final GeminiService _geminiService = GeminiService();
+  final _sheetController = DraggableScrollableController();  // Add controller
 
   // State variables
   bool _isLoading = false;
@@ -66,7 +70,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
 
         // Upload the image to Firebase Storage
         final String fileName = '${DateTime.now().toIso8601String()}.jpg';
-        final String? downloadUrl = await _storageService.uploadBytes(
+        final String downloadUrl = await _storageService.uploadBytes(
           bytes: imageBytes,
           folder: 'pollinators',
           fileName: fileName,
@@ -102,12 +106,6 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
         _isLoading = true;
       });
 
-      // final imageBytes = await _storageService.fileToBytes(image);
-      // if (imageBytes == null) {
-      //   throw Exception('Failed to process image');
-      // }
-
-      ///
       final imageBytes = await _storageService.fileToBytes(
         image,
         format: 'jpeg', // Ensure the format is passed correctly
@@ -115,9 +113,6 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       if (imageBytes == null) {
         throw Exception('Failed to process image');
       }
-
-      ///
-      ///
 
       // Create a prompt for structured JSON response
       final prompt = TextPart(
@@ -213,6 +208,9 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
           });
         }
       });
+
+      // Call the method to handle identification completion
+      _onIdentifyComplete(context);
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -236,8 +234,67 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
     });
   }
 
+  // Method to open chat panel
+  void _openChatSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final sheetCtl = DraggableScrollableController();
+        return DraggableScrollableSheet(
+          controller: sheetCtl,
+          initialChildSize: .55,
+          maxChildSize: .9,
+          minChildSize: .3,
+          expand: false,
+          builder: (innerCtx, scrollCtl) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ChatPanel(
+              scrollController: scrollCtl,
+              sheetCtl: sheetCtl,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Method to handle identification completion
+  void _onIdentifyComplete(BuildContext ctx) {
+    if (_identificationResult != null && 
+        _identificationResult!['identification'] != null &&
+        _selectedImage != null) {
+      
+      // Get name from identification result
+      final commonName = _identificationResult!['identification']['commonName'] ?? 'Unknown Species';
+      
+      // Set chat context
+      ctx.read<ChatProvider>().seedFromContext(
+        ChatContextType.identify,
+        label: commonName,
+        imagePath: _selectedImage!.path,
+      );
+
+      // Open chat panel
+      // _openChatSheet(ctx);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Update identification result in IdentifyProvider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_identificationResult != null && _selectedImage != null) {
+        context.read<IdentifyProvider>().setResult(_identificationResult, image: _selectedImage);
+      } else if (_identificationResult == null) {
+        context.read<IdentifyProvider>().resetResult();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -256,10 +313,21 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                   onPressed: _resetIdentification,
                 ),
       ),
-      body:
+      body: Stack(
+        children: [
+          // Original content in the first child of Stack
           _isLoading
               ? _buildLoadingView()
               : (_isCameraView ? _buildCameraView() : _buildResultsView()),
+          
+          // Use a single condition to show ChatFab - no longer depends on tab
+          Consumer<IdentifyProvider>(
+            builder: (context, provider, _) {
+              return provider.analysisReady ? const ChatFab() : const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 1, // Identify is selected
         onItemSelected: (index) {
@@ -269,8 +337,6 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
             Navigator.pushNamed(context, '/map');
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
-          } else if (index == 4) {
-            Navigator.pushNamed(context, '/chat');
           }
         },
       ),
@@ -425,8 +491,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _identificationResult!['message'] as String? ??
-                    'An unknown error occurred',
+                _identificationResult!['message'] as String? ?? 'An unknown error occurred',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
@@ -666,7 +731,7 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
                         final String fileName =
                             '${DateTime.now().toIso8601String()}.jpg';
                         final String folderPath = 'users/$userId/sightings';
-                        final String? photoUrl = await _storageService
+                        final String photoUrl = await _storageService
                             .uploadFile(
                               file: _selectedImage!,
                               folder: folderPath,

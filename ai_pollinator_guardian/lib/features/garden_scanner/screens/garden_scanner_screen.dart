@@ -1,17 +1,18 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:ai_pollinator_guardian/services/gemini_service.dart';
 import 'package:ai_pollinator_guardian/services/storage_service.dart';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ai_pollinator_guardian/models/garden_model.dart';
-import 'package:ai_pollinator_guardian/services/user_data_service.dart';
+import 'package:ai_pollinator_guardian/widgets/chat_fab.dart';
+import 'package:ai_pollinator_guardian/features/chat_assistant/providers/chat_provider.dart';
+import 'package:ai_pollinator_guardian/widgets/chat_panel.dart';
+import 'package:provider/provider.dart';
+import 'package:ai_pollinator_guardian/features/garden_scanner/providers/garden_scanner_provider.dart';
 
 class GardenScannerScreen extends StatefulWidget {
-  const GardenScannerScreen({Key? key}) : super(key: key);
+  const GardenScannerScreen({super.key});
 
   @override
   _GardenScannerScreenState createState() => _GardenScannerScreenState();
@@ -20,9 +21,10 @@ class GardenScannerScreen extends StatefulWidget {
 class _GardenScannerScreenState extends State<GardenScannerScreen> {
   final StorageService _storageService = StorageService();
   final GeminiService _geminiService = GeminiService();
+  final _sheetController = DraggableScrollableController();  // 添加控制器
 
   // State variables
-  late List<File> _gardenImages = [];
+  List<File> _gardenImages = [];
   bool _isAnalyzing = false;
   String _analysisError = '';
 
@@ -184,6 +186,8 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
         _analysis = response;
         _isAnalyzing = false;
       });
+
+      _onAnalysisComplete(context);
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
@@ -203,8 +207,61 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     });
   }
 
+  // 添加打开聊天面板的方法
+  void _openChatSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final sheetCtl = DraggableScrollableController();
+        return DraggableScrollableSheet(
+          controller: sheetCtl,
+          initialChildSize: .55,
+          maxChildSize: .9,
+          minChildSize: .3,
+          expand: false,
+          builder: (innerCtx, scrollCtl) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ChatPanel(
+              scrollController: scrollCtl,
+              sheetCtl: sheetCtl,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 修改分析完成后的处理方法
+  void _onAnalysisComplete(BuildContext ctx) {
+    if (_analysis != null) {
+      // 设置聊天上下文
+      ctx.read<ChatProvider>().seedFromContext(
+        ChatContextType.garden,
+        // 如果有图片，使用第一张图片作为视觉上下文
+        imagePath: _gardenImages.isNotEmpty ? _gardenImages.first.path : null,
+      );
+      
+      // 弹出聊天面板
+      // _openChatSheet(ctx);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 更新GardenScannerProvider中的分析结果
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_analysis != null) {
+        context.read<GardenScannerProvider>().setAnalysis(_analysis, images: _gardenImages);
+      } else {
+        context.read<GardenScannerProvider>().resetAnalysis();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -218,34 +275,45 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body:
+      body: Stack(
+        children: [
+          // 原有内容
           _isAnalyzing
               ? _buildLoadingView()
               : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 16),
-                    _buildImageGallery(),
-                    const SizedBox(height: 24),
-                    if (_analysis != null) ...[
-                      _buildPollinatorScoreCard(),
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 16),
+                      _buildImageGallery(),
                       const SizedBox(height: 24),
-                      _buildRecommendedPlantsCard(),
-                      const SizedBox(height: 24),
-                      _buildActionPlanCard(),
-                      const SizedBox(height: 80), // Bottom padding for FAB
-                    ] else if (_analysisError.isNotEmpty) ...[
-                      _buildErrorView(),
-                    ] else if (_gardenImages.isNotEmpty) ...[
-                      _buildAnalyzeButton(),
-                      const SizedBox(height: 80),
+                      if (_analysis != null) ...[
+                        _buildPollinatorScoreCard(),
+                        const SizedBox(height: 24),
+                        _buildRecommendedPlantsCard(),
+                        const SizedBox(height: 24),
+                        _buildActionPlanCard(),
+                        const SizedBox(height: 80), // Bottom padding for FAB
+                      ] else if (_analysisError.isNotEmpty) ...[
+                        _buildErrorView(),
+                      ] else if (_gardenImages.isNotEmpty) ...[
+                        _buildAnalyzeButton(),
+                        const SizedBox(height: 80),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+                
+          // 使用单一条件显示 ChatFab - 不再依赖于tab
+          Consumer<GardenScannerProvider>(
+            builder: (context, provider, _) {
+              return provider.analysisReady ? const ChatFab() : const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
       bottomNavigationBar: PollinatorBottomNavBar(
         selectedIndex: 3, // Garden is selected
         onItemSelected: (index) {
@@ -255,8 +323,6 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
             Navigator.pushNamed(context, '/identify');
           } else if (index == 2) {
             Navigator.pushNamed(context, '/map');
-          } else if (index == 4) {
-            Navigator.pushNamed(context, '/chat');
           }
         },
       ),
@@ -264,34 +330,17 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Garden Analysis',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Evaluate your garden for pollinators',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ],
+        const Text(
+          'Garden Analysis',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        IconButton(
-          icon: const Icon(Icons.history, color: Colors.green, size: 28),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => GardenHistoryPage(),
-              ),
-            );
-          },
+        const SizedBox(height: 4),
+        Text(
+          'Evaluate your space for pollinators',
+          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
       ],
     );
@@ -587,24 +636,26 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     );
   }
 
- Widget _buildScoreRing(int percentage) {
-  Color ringColor = _getRingColor(percentage);
-
-  return SizedBox(
-    width: 80,
-    height: 80,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        CustomPaint(
-          size: Size(80, 80),
-          painter: ScoreRingPainter(
-            percentage: percentage,
-            activeColor: ringColor,
-            inactiveColor: Colors.grey[300]!,
-          ),
+  Widget _buildScoreRing(int percentage) {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: SweepGradient(
+          startAngle: 3 * 3.14 / 2,
+          endAngle: 7 * 3.14 / 2,
+          colors: [
+            AppColors.primaryColor,
+            AppColors.primaryColor,
+            Colors.grey[300]!,
+            Colors.grey[300]!,
+          ],
+          stops: [0.0, percentage / 100, percentage / 100, 1.0],
         ),
-        Container(
+      ),
+      child: Center(
+        child: Container(
           width: 64,
           height: 64,
           decoration: const BoxDecoration(
@@ -617,15 +668,14 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: ringColor,
+                color: AppColors.primaryColor,
               ),
             ),
           ),
         ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
   Widget _buildAnalysisItem({
     required String category,
@@ -858,36 +908,11 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildActionButton(
-  label: 'Save Plan to Profile',
-  onPressed: () async {
-    if (_analysis == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No analysis data to save')),
-      );
-      return;
-    }
-
-    // Extract data from the Gemini response (_analysis)
-    final Map<String, dynamic> aiResponse = _analysis!;
-
-    // Call saveGardenProfile
-    final bool success = await UserDataService().saveGardenProfile(
-      aiResponse: aiResponse,
-      gardenImages: _gardenImages, photoUrls: [], // Pass the list of File objects
-    );
-
-    // Show feedback to the user
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Garden profile saved successfully!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save garden profile.')),
-      );
-    }
-  },
-),
+                  label: 'Save Plan to Profile',
+                  onPressed: () {
+                    // Save action plan logic
+                  },
+                ),
                 const SizedBox(height: 12),
                 _buildActionButton(
                   label: 'Scan Garden Again',
@@ -999,415 +1024,4 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
       ),
     );
   }
-
-  Color _getRingColor(int percentage) {
-   if (percentage < 30) {
-    return Colors.red;
-  } else if (percentage < 70) {
-    return Colors.yellow[700]!;
-  } else {
-    return Colors.green;
-  }
-}
-}
-
-class GardenHistoryPage extends StatelessWidget {
-  final UserDataService _userDataService = UserDataService();
-
-  GardenHistoryPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'My Garden History',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppColors.primaryColor,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      backgroundColor: Colors.grey[100],
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _userDataService.getGardenProfilesByUser(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error loading history'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No garden scans yet.'));
-          }
-
-          final gardens = snapshot.data!;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: gardens.length,
-            itemBuilder: (context, index) {
-              final garden = gardens[index];
-              return _buildGardenCard(garden);
-            },
-          );
-        },
-      ),
-    );
-
-  
-  }
-
-  Widget _buildGardenCard(Map<String, dynamic> garden) {
-  final pollinatorScore = garden['pollinator_score'];
-  final analysis = garden['analysis'] as List;
-  final recommendedPlants = garden['recommended_plants'] as List;
-  final actionPlan = garden['action_plan'] as List;
-  String createdAt = 'Unknown Date';
-
-  if (garden['createdAt'] != null) {
-    try {
-      createdAt = _formatDate(DateTime.parse(garden['createdAt']));
-    } catch (e) {
-      print('Error parsing createdAt: $e');
-    }
-  }
-
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    margin: const EdgeInsets.only(bottom: 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header with photo
-        ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(12),
-            topRight: Radius.circular(12),
-          ),
-          child: garden['photos'] != null && (garden['photos'] as List).isNotEmpty
-              ? Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage((garden['photos'] as List).first),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                )
-              : Container(
-                  height: 180,
-                  width: double.infinity,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.photo, size: 60, color: Colors.grey),
-                ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Garden Name
-              Text(
-                garden['name'] ?? 'Unnamed Garden',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Pollinator Score
-              if (pollinatorScore != null)
-                Row(
-                  children: [
-                    _buildScoreRing(pollinatorScore['percentage']),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            pollinatorScore['category'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            pollinatorScore['description'],
-                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 16),
-              // Analysis Section
-              const Text(
-                'Analysis:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...analysis.map((item) {
-                return _buildAnalysisItem(
-                  category: item['category'] as String,
-                  status: item['status'] as String,
-                  description: item['description'] as String,
-                );
-              }),
-              const SizedBox(height: 16),
-              // Recommended Plants Section
-              const Text(
-                'Recommended Plants:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...recommendedPlants.map((plant) {
-                return _buildPlantItem(
-                  name: plant['name'] as String,
-                  description: plant['description'] as String,
-                  tags: List<String>.from(plant['tags']),
-                );
-              }),
-              const SizedBox(height: 16),
-              // Action Plan Section
-              const Text(
-                'Action Plan:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...actionPlan.map((action) {
-                return _buildActionItem(
-                  title: action['title'] as String,
-                  progress: action['progress'] as int,
-                );
-              }),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-  Widget _buildScoreRing(int percentage) {
-  Color ringColor = _getRingColor(percentage);
-
-  return SizedBox(
-    width: 80,
-    height: 80,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        CustomPaint(
-          size: Size(80, 80),
-          painter: ScoreRingPainter(
-            percentage: percentage,
-            activeColor: ringColor,
-            inactiveColor: Colors.grey[300]!,
-          ),
-        ),
-        Container(
-          width: 64,
-          height: 64,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-          child: Center(
-            child: Text(
-              '$percentage%',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: ringColor,
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
-  Widget _buildAnalysisItem({
-    required String category,
-    required String status,
-    required String description,
-  }) {
-    IconData icon;
-    Color color;
-
-    switch (status) {
-      case 'good':
-        icon = Icons.check_circle;
-        color = Colors.green;
-        break;
-      case 'warning':
-        icon = Icons.warning;
-        color = Colors.orange;
-        break;
-      case 'bad':
-        icon = Icons.cancel;
-        color = Colors.red;
-        break;
-      default:
-        icon = Icons.info;
-        color = Colors.blue;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              "$category: $description",
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlantItem({
-    required String name,
-    required String description,
-    required List<String> tags,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: tags.map((tag) => _buildPlantTag(tag)).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlantTag(String tag) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.green[50],
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        tag,
-        style: TextStyle(fontSize: 12, color: Colors.green[700]),
-      ),
-    );
-  }
-
-  Widget _buildActionItem({
-    required String title,
-    required int progress,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: progress / 100,
-            backgroundColor: Colors.grey[300],
-            color: AppColors.primaryColor,
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-  }
-
-  Color _getRingColor(int percentage) {
-  if (percentage < 30) {
-    return Colors.red;
-  } else if (percentage < 70) {
-    return Colors.yellow[700]!;
-  } else {
-    return Colors.green;
-  }
-}
-}
-
-class ScoreRingPainter extends CustomPainter {
-  final int percentage;
-  final Color activeColor;
-  final Color inactiveColor;
-
-  ScoreRingPainter({
-    required this.percentage,
-    required this.activeColor,
-    required this.inactiveColor,
-  });
-
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    double strokeWidth = 8.0;
-    Offset center = Offset(size.width / 2, size.height / 2);
-    double radius = (size.width - strokeWidth) / 2;
-
-    Paint backgroundPaint = Paint()
-      ..color = inactiveColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    Paint foregroundPaint = Paint()
-      ..color = activeColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    double sweepAngle = 2 * math.pi * (percentage / 100);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      -sweepAngle,
-      false,
-      foregroundPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

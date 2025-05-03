@@ -6,10 +6,10 @@ class SuggestionChips extends StatelessWidget {
   final Function(String) onSuggestionTap;
   
   const SuggestionChips({
-    Key? key,
+    super.key,
     required this.suggestions,
     required this.onSuggestionTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,6 @@
 import 'package:ai_pollinator_guardian/features/pollinator_id/screens/pollinator_history.dart';
+import 'package:ai_pollinator_guardian/features/pollinator_id/providers/identify_provider.dart';
+import 'package:ai_pollinator_guardian/features/garden_scanner/providers/garden_scanner_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +32,8 @@ class PollinatorGuardianApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => CommunityMapProvider()),
+        ChangeNotifierProvider(create: (_) => IdentifyProvider()),
+        ChangeNotifierProvider(create: (_) => GardenScannerProvider()),
       ],
       child: MaterialApp(
         title: 'AI Pollinator Guardian',
@@ -37,7 +41,7 @@ class PollinatorGuardianApp extends StatelessWidget {
           useMaterial3: true,
           colorScheme: DesignTokens.lightColorScheme,
           fontFamily: 'Roboto',
-          scaffoldBackgroundColor: DesignTokens.lightColorScheme.background,
+          scaffoldBackgroundColor: DesignTokens.lightColorScheme.surface,
           appBarTheme: AppBarTheme(
             backgroundColor: DesignTokens.lightColorScheme.primary,
             foregroundColor: DesignTokens.lightColorScheme.onPrimary,
@@ -52,7 +56,7 @@ class PollinatorGuardianApp extends StatelessWidget {
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
-            fillColor: DesignTokens.lightColorScheme.surfaceVariant.withOpacity(0.3),
+            fillColor: DesignTokens.lightColorScheme.surfaceContainerHighest.withOpacity(0.3),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: DesignTokens.l,
               vertical: DesignTokens.m,
@@ -109,7 +113,7 @@ class PollinatorGuardianApp extends StatelessWidget {
           useMaterial3: true,
           colorScheme: DesignTokens.darkColorScheme,
           fontFamily: 'Roboto',
-          scaffoldBackgroundColor: DesignTokens.darkColorScheme.background,
+          scaffoldBackgroundColor: DesignTokens.darkColorScheme.surface,
           appBarTheme: AppBarTheme(
             backgroundColor: DesignTokens.darkColorScheme.primaryContainer,
             foregroundColor: DesignTokens.darkColorScheme.onPrimaryContainer,
@@ -124,7 +128,7 @@ class PollinatorGuardianApp extends StatelessWidget {
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
-            fillColor: DesignTokens.darkColorScheme.surfaceVariant.withOpacity(0.3),
+            fillColor: DesignTokens.darkColorScheme.surfaceContainerHighest.withOpacity(0.3),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: DesignTokens.l,
               vertical: DesignTokens.m,

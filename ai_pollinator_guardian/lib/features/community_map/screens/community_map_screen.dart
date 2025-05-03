@@ -6,7 +6,7 @@ import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/features/community_map/providers/community_map_provider.dart';
 
 class CommunityMapScreen extends StatefulWidget {
-  const CommunityMapScreen({Key? key}) : super(key: key);
+  const CommunityMapScreen({super.key});
 
   @override
   _CommunityMapScreenState createState() => _CommunityMapScreenState();
@@ -22,7 +22,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
   static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
 
   // Map style - You can customize this if needed
-  String _mapStyle = '';
+  final String _mapStyle = '';
 
   // Filter dialog visibility
   bool _showFilters = false;
@@ -32,13 +32,18 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
     super.initState();
     debugPrint('CommunityMapScreen: initializing');
 
+    // Add logs to check initialization
+    debugPrint('CommunityMapScreen: Google Maps API initialization check');
+    
     // Load map data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<CommunityMapProvider>(
         context,
         listen: false,
       );
+      debugPrint('CommunityMapScreen: Start fetching pollinator data');
       provider.fetchPollinators();
+      debugPrint('CommunityMapScreen: Start getting current location');
       provider.getCurrentLocation();
       debugPrint('CommunityMapScreen: Data fetch initiated');
     });
@@ -256,6 +261,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('CommunityMapScreen: Building screen');
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -280,27 +286,47 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
           debugPrint(
             'CommunityMapScreen: Building map with ${provider.markers.length} markers',
           );
+          
+          // Listen for marker taps
+          if (provider.selectedMarkerId != null && provider.selectedMarkerId!.isNotEmpty) {
+            // Use Future.microtask to ensure it runs after the current build
+            Future.microtask(() {
+              _onMarkerTapped(provider.selectedMarkerId!);
+              // Reset selectedMarkerId to prevent repeated triggers
+              provider.onMarkerTapped('');
+            });
+          }
+          
+          debugPrint('CommunityMapScreen: Setting up GoogleMap widget');
           return Stack(
             children: [
               // Google Map
-              GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition: CameraPosition(
-                  target:
-                      provider.currentLocation != null
-                          ? LatLng(
-                            provider.currentLocation!.latitude!,
-                            provider.currentLocation!.longitude!,
-                          )
-                          : _defaultCenter,
-                  zoom: 14,
+              Container(
+                color: Colors.grey[200], // Add background color to check if the container is rendered correctly
+                width: MediaQuery.of(context).size.width, // Ensure the container takes up the full screen width
+                height: MediaQuery.of(context).size.height, // Ensure the container takes up the full screen height
+                child: GoogleMap(
+                  onMapCreated: (controller) {
+                    debugPrint('CommunityMapScreen: Map creation callback fired');
+                    _onMapCreated(controller);
+                  },
+                  initialCameraPosition: CameraPosition(
+                    target:
+                        provider.currentLocation != null
+                            ? LatLng(
+                              provider.currentLocation!.latitude!,
+                              provider.currentLocation!.longitude!,
+                            )
+                            : _defaultCenter,
+                    zoom: 14,
+                  ),
+                  markers: provider.markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  mapToolbarEnabled: false,
+                  zoomControlsEnabled: true, // Enable zoom controls for easier testing
+                  compassEnabled: true, // Enable compass for easier testing
                 ),
-                markers: provider.markers,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                mapToolbarEnabled: false,
-                zoomControlsEnabled: false,
-                compassEnabled: false,
               ),
 
               // Search Bar (conditionally shown)
@@ -545,12 +571,8 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
             Navigator.pushReplacementNamed(context, '/');
           } else if (index == 1) {
             Navigator.pushNamed(context, '/identify');
-          } else if (index == 2) {
-            // Already on map screen, do nothing
           } else if (index == 3) {
             Navigator.pushNamed(context, '/garden');
-          } else if (index == 4) {
-            Navigator.pushNamed(context, '/chat');
           }
         },
       ),

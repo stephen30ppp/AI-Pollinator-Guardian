@@ -1,9 +1,3 @@
-/// Central wrapper around FirebaseAuth + Cloud Firestore.
-/// Follows: https://firebase.google.com/docs/auth/flutter/start
-///          https://firebase.google.com/docs/firestore
-///
-library;
-
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,9 +13,6 @@ class FirebaseService {
   // ───────────────────── Firebase instances ────────────────────
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  // To expose Firestore
-  FirebaseFirestore get firestore => _db;
 
   // region --- AUTH STATE STREAM ---
   /// Expose auth changes to Providers / Riverpod

@@ -9,7 +9,6 @@ import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:ai_pollinator_guardian/constants/design_tokens.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -216,9 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (index == 3) {
             // Garden
             Navigator.pushNamed(context, '/garden');
-          } else if (index == 4) {
-            // Chat
-            Navigator.pushNamed(context, '/chat');
           }
         },
       ),

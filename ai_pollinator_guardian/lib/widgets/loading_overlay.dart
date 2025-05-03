@@ -7,11 +7,11 @@ class LoadingOverlay extends StatelessWidget {
   final String? message;
 
   const LoadingOverlay({
-    Key? key,
+    super.key,
     required this.child,
     this.isLoading = true,
     this.message,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

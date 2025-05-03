@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class PollinatorHistory extends StatelessWidget {
   final String userId;
 
-  const PollinatorHistory({Key? key, required this.userId}) : super(key: key);
+  const PollinatorHistory({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {

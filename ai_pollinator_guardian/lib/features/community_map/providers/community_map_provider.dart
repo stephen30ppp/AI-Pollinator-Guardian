@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 
 class CommunityMapProvider with ChangeNotifier {
   // Location service
@@ -13,6 +12,9 @@ class CommunityMapProvider with ChangeNotifier {
   // Sightings data
   List<Map<String, dynamic>> _sightings = [];
   Set<Marker> _markers = {};
+
+  // 添加选中的标记ID
+  String? _selectedMarkerId;
 
   // Statistics
   int _todaySightings = 0;
@@ -42,6 +44,15 @@ class CommunityMapProvider with ChangeNotifier {
   String? get pollinatorTypeFilter => _pollinatorTypeFilter;
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
+  // 添加选中标记ID的getter
+  String? get selectedMarkerId => _selectedMarkerId;
+
+  // 添加一个方法来处理标记点击
+  void onMarkerTapped(String markerId) {
+    debugPrint('CommunityMapProvider: Marker tapped and processed: $markerId');
+    _selectedMarkerId = markerId;
+    notifyListeners();
+  }
 
   // Get a sighting by ID
   Map<String, dynamic>? getSightingById(String id) {
@@ -129,42 +140,42 @@ class CommunityMapProvider with ChangeNotifier {
     final filteredSightings = _getFilteredSightings();
 
     // Create markers
-    _markers =
-        filteredSightings.map((sighting) {
-          final id = sighting['id'] as String;
-          final lat = sighting['latitude'] as double;
-          final lng = sighting['longitude'] as double;
-          final type = sighting['type'] as String;
+    _markers = filteredSightings.map((sighting) {
+      final id = sighting['id'] as String;
+      final lat = sighting['latitude'] as double;
+      final lng = sighting['longitude'] as double;
+      final type = sighting['type'] as String;
 
-          // Choose marker color based on type
-          BitmapDescriptor markerIcon;
-          switch (type.toLowerCase()) {
-            case 'bee':
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueYellow,
-              );
-              break;
-            case 'butterfly':
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueOrange,
-              );
-              break;
-            default:
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueViolet,
-              );
-          }
-
-          return Marker(
-            markerId: MarkerId(id),
-            position: LatLng(lat, lng),
-            icon: markerIcon,
-            onTap: () {
-              debugPrint('CommunityMapProvider: Marker tapped: $id');
-              // This will be handled by the UI
-            },
+      // Choose marker color based on type
+      BitmapDescriptor markerIcon;
+      switch (type.toLowerCase()) {
+        case 'bee':
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueYellow,
           );
-        }).toSet();
+          break;
+        case 'butterfly':
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          );
+          break;
+        default:
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueViolet,
+          );
+      }
+
+      return Marker(
+        markerId: MarkerId(id),
+        position: LatLng(lat, lng),
+        icon: markerIcon,
+        onTap: () {
+          debugPrint('CommunityMapProvider: Marker tapped: $id');
+          // 调用我们的新方法处理标记点击
+          onMarkerTapped(id);
+        },
+      );
+    }).toSet();
 
     debugPrint('CommunityMapProvider: Created ${_markers.length} markers');
   }
@@ -495,41 +506,42 @@ class CommunityMapProvider with ChangeNotifier {
         }).toList();
 
     // Create markers from the search results
-    _markers =
-        searchResults.map((sighting) {
-          final id = sighting['id'] as String;
-          final lat = sighting['latitude'] as double;
-          final lng = sighting['longitude'] as double;
-          final type = sighting['type'] as String;
+    _markers = searchResults.map((sighting) {
+      final id = sighting['id'] as String;
+      final lat = sighting['latitude'] as double;
+      final lng = sighting['longitude'] as double;
+      final type = sighting['type'] as String;
 
-          // Choose marker color based on type
-          BitmapDescriptor markerIcon;
-          switch (type.toLowerCase()) {
-            case 'bee':
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueYellow,
-              );
-              break;
-            case 'butterfly':
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueOrange,
-              );
-              break;
-            default:
-              markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueViolet,
-              );
-          }
-
-          return Marker(
-            markerId: MarkerId(id),
-            position: LatLng(lat, lng),
-            icon: markerIcon,
-            onTap: () {
-              debugPrint('CommunityMapProvider: Marker tapped: $id');
-            },
+      // Choose marker color based on type
+      BitmapDescriptor markerIcon;
+      switch (type.toLowerCase()) {
+        case 'bee':
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueYellow,
           );
-        }).toSet();
+          break;
+        case 'butterfly':
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          );
+          break;
+        default:
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueViolet,
+          );
+      }
+
+      return Marker(
+        markerId: MarkerId(id),
+        position: LatLng(lat, lng),
+        icon: markerIcon,
+        onTap: () {
+          debugPrint('CommunityMapProvider: Marker tapped: $id');
+          // 同样在搜索结果的标记中添加点击事件处理
+          onMarkerTapped(id);
+        },
+      );
+    }).toSet();
 
     debugPrint(
       'CommunityMapProvider: Found ${_markers.length} matches for "$query"',
