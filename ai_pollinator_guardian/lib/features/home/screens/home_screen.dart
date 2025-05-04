@@ -1,6 +1,7 @@
 import 'package:ai_pollinator_guardian/features/home/widgets/activity_stat_card.dart';
 import 'package:ai_pollinator_guardian/features/home/widgets/set_target_dialog.dart';
 import 'package:ai_pollinator_guardian/services/TargetService.dart';
+import 'package:ai_pollinator_guardian/services/sighting_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late ScrollController _scrollController;
+  final SightingService _sightingService = SightingService();
 
   // Animation controllers
   late AnimationController _statsFadeController;
@@ -38,8 +40,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _speciesTarget = 5;
   int _gardensTarget = 3;
   
-  // Loading state for targets
+  // Activity stats
+  int _sightingsCount = 0;
+  int _speciesCount = 0;
+  int _gardensCount = 0;
+  
+  // Loading states
   bool _loadingTargets = true;
+  bool _loadingStats = true;
 
   @override
   void initState() {
@@ -72,6 +80,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     // Load user targets from Firebase
     _loadUserTargets();
+    
+    // Load activity stats
+    _loadActivityStats();
   }
   
   // Load targets from Firebase
@@ -118,6 +129,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         setState(() => _loadingTargets = false);
       }
     }
+  }
+  
+  // Load activity stats from Firebase
+  Future<void> _loadActivityStats() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.user?.id == null) return;
+    
+    setState(() => _loadingStats = true);
+    
+    try {
+      final userId = authProvider.user!.id;
+      
+      // Load stats in parallel
+      final sightingsCount = await _sightingService.getSightingsCount(userId);
+      final speciesCount = await _sightingService.getUniqueSpeciesCount(userId);
+      
+      // For now, use the gardens field from user model since we don't have a gardens subcollection
+      // This should be updated later to use a proper gardens subcollection query
+      final gardensCount = authProvider.user?.gardens?.length ?? 0;
+      
+      if (mounted) {
+        setState(() {
+          _sightingsCount = sightingsCount;
+          _speciesCount = speciesCount;
+          _gardensCount = gardensCount;
+          _loadingStats = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading activity stats: $e');
+      if (mounted) {
+        setState(() => _loadingStats = false);
+      }
+    }
+  }
+  
+  // Refresh all data
+  Future<void> _refreshData() async {
+    await Future.wait([
+      _loadUserTargets(),
+      _loadActivityStats(),
+    ]);
   }
 
   @override
@@ -189,166 +242,165 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Calculate user stats safely
-    final sightingsCount = user?.sightings?.length ?? 0;
-    final gardensCount = user?.gardens?.length ?? 0;
-    final speciesCount = user?.identifiedSpeciesCount ?? 0;
-
     return Scaffold(
-      body: CustomScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // App Bar
-          SliverAppBar(
-            automaticallyImplyLeading: false,
-            pinned: true,
-            toolbarHeight: kToolbarHeight,
-            titleSpacing: 16,
-            title: const Text(
-              'AI Pollinator Guardian',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primaryColor, AppColors.accentColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        color: AppColors.primaryColor,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // App Bar
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              pinned: true,
+              toolbarHeight: kToolbarHeight,
+              titleSpacing: 16,
+              title: const Text(
+                'AI Pollinator Guardian',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Hero(
-                  tag: 'profileAvatar',
-                  child: AvatarGlow(
-                    imageUrl: user?.photoUrl,
-                    showNotification: true,
-                    onTap: () {
-                      Navigator.pushNamed(context, '/profile');
-                    },
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primaryColor, AppColors.accentColor],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
-            ],
-          ),
-
-          // Main content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: DesignTokens.m),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Fact Carousel
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.l),
-                    child: FactCardCarousel(
-                      facts: PollinatorFact.sampleFacts,
-                      greeting: 'Good Day, Nature Guardian!',
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Hero(
+                    tag: 'profileAvatar',
+                    child: AvatarGlow(
+                      imageUrl: user?.photoUrl,
+                      showNotification: true,
+                      onTap: () {
+                        Navigator.pushNamed(context, '/profile');
+                      },
                     ),
                   ),
-                  const SizedBox(height: DesignTokens.l),
+                ),
+              ],
+            ),
 
-                  // Feature Cards Carousel
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.s),
-                    child: FeatureCardCarousel(
-                      items: [
-                        FeatureCardItem(
-                          title: 'Identify Pollinators',
-                          description: 'Snap a photo to reveal the secret lives of bees & butterflies.',
-                          imagePath: 'assets/images/identify_pollinators.jpg',
-                          onTap: () => Navigator.pushNamed(context, '/identify'),
-                        ),
-                        FeatureCardItem(
-                          title: 'Garden Scanner',
-                          description: 'Analyze your garden and get custom pollinator tips.',
-                          imagePath: 'assets/images/garden_scanner.jpg',
-                          onTap: () => Navigator.pushNamed(context, '/garden'),
-                        ),
-                        FeatureCardItem(
-                          title: 'Community Map',
-                          description: 'Explore pollinator sightings in your area.',
-                          imagePath: 'assets/images/map.jpg',
-                          onTap: () => Navigator.pushNamed(context, '/map'),
-                        ),
-                      ],
+            // Main content
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: DesignTokens.m),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Fact Carousel
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.l),
+                      child: FactCardCarousel(
+                        facts: PollinatorFact.sampleFacts,
+                        greeting: 'Good Day, Nature Guardian!',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: DesignTokens.xl),
+                    const SizedBox(height: DesignTokens.l),
 
-                  // Your Activity section - with consistent styling to Recent Activity
-                  _buildSectionHeader(
-                    title: 'Your Activity',
-                    actionWidget: _buildSectionAction(
-                      label: _isActivityExpanded ? 'Collapse' : 'Expand',
-                      trailing: const Icon(Icons.expand_more, size: 16),
-                      rotateTrailing: true,
-                      onPressed: _toggleActivityExpansion,
+                    // Feature Cards Carousel
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.s),
+                      child: FeatureCardCarousel(
+                        items: [
+                          FeatureCardItem(
+                            title: 'Identify Pollinators',
+                            description: 'Snap a photo to reveal the secret lives of bees & butterflies.',
+                            imagePath: 'assets/images/identify_pollinators.jpg',
+                            onTap: () => Navigator.pushNamed(context, '/identify'),
+                          ),
+                          FeatureCardItem(
+                            title: 'Garden Scanner',
+                            description: 'Analyze your garden and get custom pollinator tips.',
+                            imagePath: 'assets/images/garden_scanner.jpg',
+                            onTap: () => Navigator.pushNamed(context, '/garden'),
+                          ),
+                          FeatureCardItem(
+                            title: 'Community Map',
+                            description: 'Explore pollinator sightings in your area.',
+                            imagePath: 'assets/images/map.jpg',
+                            onTap: () => Navigator.pushNamed(context, '/map'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: DesignTokens.s),
+                    const SizedBox(height: DesignTokens.xl),
 
-                  // Activity Cards - Show/hide based on expanded state
-                  AnimatedCrossFade(
-                    firstChild: _buildActivityCards(sightingsCount, gardensCount, speciesCount),
-                    secondChild: const SizedBox(height: 0),
-                    crossFadeState: _isActivityExpanded 
-                        ? CrossFadeState.showFirst 
-                        : CrossFadeState.showSecond,
-                    duration: const Duration(milliseconds: 300),
-                  ),
-                  const SizedBox(height: DesignTokens.xl),
-
-                  // Recent Activity section
-                  _buildSectionHeader(
-                    title: 'Recent Activity',
-                    actionWidget: _buildSectionAction(
-                      label: 'View all',
-                      onPressed: () => Navigator.pushNamed(context, '/history'),
+                    // Your Activity section - with consistent styling to Recent Activity
+                    _buildSectionHeader(
+                      title: 'Your Activity',
+                      actionWidget: _buildSectionAction(
+                        label: _isActivityExpanded ? 'Collapse' : 'Expand',
+                        trailing: const Icon(Icons.expand_more, size: 16),
+                        rotateTrailing: true,
+                        onPressed: _toggleActivityExpansion,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: DesignTokens.s),
+                    const SizedBox(height: DesignTokens.s),
 
-                  // Story items
-                  SizedBox(
-                    height: 110,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: DesignTokens.m),
-                      children: [ 
-                        StoryItem(
-                          title: 'Bumblebee', date: 'Today', imagePath: 'assets/images/bumblebee.jpg', onTap: () {},
-                        ),
-                        StoryItem(
-                          title: 'Monarch', date: 'Yesterday', imagePath: 'assets/images/monarch.jpg', onTap: () {},
-                        ),
-                        StoryItem(
-                          title: 'Garden Scan', date: '2 days ago', imagePath: 'assets/images/garden.jpg', onTap: () {},
-                        ),
-                        StoryItem(
-                          title: 'Honeybee', date: '3 days ago', imagePath: 'assets/images/honeybee.jpg', onTap: () {},
-                        ),
-                      ].map((story) => Padding(
-                        padding: const EdgeInsets.only(right: DesignTokens.m),
-                        child: StoryActivityItem(story: story),
-                      )).toList(),
+                    // Activity Cards - Show/hide based on expanded state
+                    AnimatedCrossFade(
+                      firstChild: _buildActivityCards(),
+                      secondChild: const SizedBox(height: 0),
+                      crossFadeState: _isActivityExpanded 
+                          ? CrossFadeState.showFirst 
+                          : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 300),
                     ),
-                  ),
+                    const SizedBox(height: DesignTokens.xl),
 
-                  // Bottom padding
-                  const SizedBox(height: 80),
-                ],
+                    // Recent Activity section
+                    _buildSectionHeader(
+                      title: 'Recent Activity',
+                      actionWidget: _buildSectionAction(
+                        label: 'View all',
+                        onPressed: () => Navigator.pushNamed(context, '/history'),
+                      ),
+                    ),
+                    const SizedBox(height: DesignTokens.s),
+
+                    // Story items
+                    SizedBox(
+                      height: 110,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: DesignTokens.m),
+                        children: [ 
+                          StoryItem(
+                            title: 'Bumblebee', date: 'Today', imagePath: 'assets/images/bumblebee.jpg', onTap: () {},
+                          ),
+                          StoryItem(
+                            title: 'Monarch', date: 'Yesterday', imagePath: 'assets/images/monarch.jpg', onTap: () {},
+                          ),
+                          StoryItem(
+                            title: 'Garden Scan', date: '2 days ago', imagePath: 'assets/images/garden.jpg', onTap: () {},
+                          ),
+                          StoryItem(
+                            title: 'Honeybee', date: '3 days ago', imagePath: 'assets/images/honeybee.jpg', onTap: () {},
+                          ),
+                        ].map((story) => Padding(
+                          padding: const EdgeInsets.only(right: DesignTokens.m),
+                          child: StoryActivityItem(story: story),
+                        )).toList(),
+                      ),
+                    ),
+
+                    // Bottom padding
+                    const SizedBox(height: 80),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
 
       bottomNavigationBar: PollinatorBottomNavBar(
@@ -364,7 +416,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             case 0: // Home
               break;
             case 1: // Identify
-              Navigator.pushNamed(context, '/identify').then((_) => setState(() => _selectedIndex = 0));
+              Navigator.pushNamed(context, '/identify').then((_) {
+                setState(() => _selectedIndex = 0);
+                _refreshData(); // Refresh data when returning from identify page
+              });
               break;
             case 2: // Map
               Navigator.pushNamed(context, '/map').then((_) => setState(() => _selectedIndex = 0));
@@ -446,9 +501,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Activity Cards
-  Widget _buildActivityCards(int sightingsCount, int gardensCount, int speciesCount) {
+  Widget _buildActivityCards() {
     // Show loader during initial load
-    if (_loadingTargets) {
+    if (_loadingTargets || _loadingStats) {
       return const SizedBox(
         height: 170,
         child: Center(
@@ -469,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             width: 130,
             child: ActivityStatCard(
               label: 'Sightings Goal',
-              value: sightingsCount,
+              value: _sightingsCount,
               target: _sightingsTarget,
               icon: Icons.visibility_rounded,
               showProgress: true,
@@ -484,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             width: 130,
             child: ActivityStatCard(
               label: 'Species Goal',
-              value: speciesCount,
+              value: _speciesCount,
               target: _speciesTarget,
               icon: Icons.auto_awesome_rounded,
               showProgress: true,
@@ -499,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             width: 130,
             child: ActivityStatCard(
               label: 'Gardens',
-              value: gardensCount,
+              value: _gardensCount,
               icon: Icons.local_florist_rounded,
               showProgress: false,
               onTap: () {

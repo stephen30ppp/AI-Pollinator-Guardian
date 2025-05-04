@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class SightingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -56,6 +57,48 @@ class SightingService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Get the count of sightings for a user
+  Future<int> getSightingsCount(String userId) async {
+    try {
+      final QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('sightings')
+          .get();
+      
+      return snapshot.docs.length;
+    } catch (e) {
+      debugPrint('Error getting sightings count: $e');
+      return 0;
+    }
+  }
+
+  /// Get the count of unique species identified by a user
+  Future<int> getUniqueSpeciesCount(String userId) async {
+    try {
+      final QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('sightings')
+          .get();
+      
+      // Use a Set to count unique species by scientific name
+      final Set<String> uniqueSpecies = {};
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        if (data.containsKey('pollinatorId') && data['pollinatorId'] != null) {
+          uniqueSpecies.add(data['pollinatorId'] as String);
+        }
+      }
+      
+      return uniqueSpecies.length;
+    } catch (e) {
+      debugPrint('Error getting unique species count: $e');
+      return 0;
     }
   }
 }
