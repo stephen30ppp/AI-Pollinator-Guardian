@@ -21,6 +21,8 @@ import 'package:ai_pollinator_guardian/utils/global.dart';
 import 'package:ai_pollinator_guardian/ui/root_scaffold.dart';
 import 'package:ai_pollinator_guardian/features/pollinator_id/models/identify_result.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class PollinatorIdScreen extends StatefulWidget {
   const PollinatorIdScreen({super.key});
@@ -29,11 +31,21 @@ class PollinatorIdScreen extends StatefulWidget {
   _PollinatorIdScreenState createState() => _PollinatorIdScreenState();
 }
 
-class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
+class _PollinatorIdScreenState extends State<PollinatorIdScreen> with WidgetsBindingObserver {
   late final StorageService _storageService;
   late final GeminiService _geminiService;
   late final PollinatorIdentifierService _identifierService;
   final _sheetController = DraggableScrollableController();
+  
+  // 添加相机控制器
+  CameraController? _camCtl;
+  Future<void>? _camInitFut;
+  
+  // 添加缩放相关变量
+  double _minAvailableZoom = 1.0;
+  double _maxAvailableZoom = 1.0;
+  double _currentZoom = 1.0;
+  double _baseZoom = 1.0;
 
   // State variables
   bool _isLoading = false;
@@ -54,9 +66,49 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
       storageService: _storageService,
     );
     _initializeService();
+    _initCam(); // 初始化相机
     
     // 添加对IdentifyProvider的监听
     context.read<IdentifyProvider>().addListener(_listener);
+    
+    // 添加App生命周期观察器
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  // 初始化相机
+  Future<void> _initCam() async {
+    // 1) 拿权限
+    final status = await Permission.camera.request();
+    if (!status.isGranted) return;
+
+    // 2) 找后置摄像头
+    final cams = await availableCameras();
+    final back = cams.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
+    
+    // 3) 建控制器
+    _camCtl = CameraController(
+      back,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+    _camInitFut = _camCtl!.initialize();
+    setState(() {});      // 触发 rebuild
+
+    // 获取相机的缩放范围
+    _minAvailableZoom = await _camCtl!.getMinZoomLevel();
+    _maxAvailableZoom = await _camCtl!.getMaxZoomLevel();
+    _currentZoom = _minAvailableZoom;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 应用生命周期变化时处理相机控制器
+    if (_camCtl == null) return;
+    if (state == AppLifecycleState.inactive) {
+      _camCtl?.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCam();
+    }
   }
 
   // IdentifyProvider状态变化监听器
@@ -71,6 +123,10 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
   void dispose() {
     // 移除监听器
     context.read<IdentifyProvider>().removeListener(_listener);
+    // 释放相机资源
+    _camCtl?.dispose();
+    // 移除生命周期观察器
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -298,6 +354,55 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
     }
   }
 
+  // 通过CameraController直接拍照
+  Future<void> _onShutterPressed() async {
+    if (_camCtl == null || !_camCtl!.value.isInitialized) return;
+    try {
+      final XFile xfile = await _camCtl!.takePicture();
+      _selectedImage = File(xfile.path);
+      setState(() {
+        _isLoading    = true;
+        _isCameraView = false;   // 转到"结果/加载"视图
+      });
+      await _identifyPollinator(_selectedImage!);
+    } catch (e) {
+      debugPrint('拍照失败: $e');
+    }
+  }
+
+  // 显示缩放控制滑块
+  void _showZoomSlider() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Zoom'),
+                  Slider(
+                    value: _currentZoom,
+                    min: _minAvailableZoom,
+                    max: _maxAvailableZoom,
+                    onChanged: (value) {
+                      setState(() {
+                        _currentZoom = value;
+                        _camCtl?.setZoomLevel(value);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -356,17 +461,119 @@ class _PollinatorIdScreenState extends State<PollinatorIdScreen> {
   }
 
   Widget _buildMainContent() {
-    if (_isLoading) {
-      return IdentificationLoadingView(selectedImage: _selectedImage);
-    }
-    
-    if (_isCameraView) {
-      return CameraView(
-        onCapturePhoto: () => _captureImage(true),
-        onGalleryPick: () => _captureImage(false),
-      );
-    }
-    
+    if (_isLoading)  return IdentificationLoadingView(selectedImage: _selectedImage);
+    if (!_isCameraView) return _buildResultOrErrorViews();
+
+    // =============== 相机预览 ===============
+    return FutureBuilder(
+      future: _camInitFut,      // 等控制器初始化
+      builder: (ctx, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (_camCtl == null) {
+          return const Center(child: Text('Camera not available'));
+        }
+
+        // 使用Stack实现相机预览作为背景层，控制按钮作为前景层
+        return Stack(
+          children: [
+            // 相机预览作为背景层 - 铺满整个屏幕
+            SizedBox.expand(
+              child: AspectRatio(
+                aspectRatio: _camCtl!.value.aspectRatio,
+                child: CameraPreview(_camCtl!),
+              ),
+            ),
+            
+            // 顶部提示信息
+            Positioned(
+              top: 50,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Text(
+                    'Place the pollinator in the frame and tap the shutter button',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+            
+            // 底部控制栏
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // 缩放按钮
+                    IconButton(
+                      icon: const Icon(Icons.zoom_in, color: Colors.white, size: 30),
+                      onPressed: () {
+                        // 显示缩放控制滑块
+                        _showZoomSlider();
+                      },
+                    ),
+                    
+                    // 拍照按钮
+                    GestureDetector(
+                      onTap: _onShutterPressed,
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey[300]!, width: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // 图库按钮
+                    IconButton(
+                      icon: const Icon(
+                        Icons.photo_library,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () => _captureImage(false), // 从图库选择图片
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 构建结果或错误视图
+  Widget _buildResultOrErrorViews() {
     // Handle various states in results view
     if (_selectedImage == null) {
       return const Center(child: Text('No image selected'));
