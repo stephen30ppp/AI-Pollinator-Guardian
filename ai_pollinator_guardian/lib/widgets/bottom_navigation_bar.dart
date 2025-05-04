@@ -67,10 +67,10 @@ class PollinatorBottomNavBar extends StatelessWidget {
           final int _currentIdx = selectedIndex;
           final int newIdx = index;
           
-          // 如果当前是 Garden (3)，即将离开 → 清零
-          if (_currentIdx == 3) context.read<GardenScannerProvider>().resetAnalysis();
-          // 如果当前是 Identify (1)，即将离开 → 清零
-          if (_currentIdx == 1) context.read<IdentifyProvider>().resetResult();
+          // 原来会重置Garden分析结果，现在注释掉这段代码，保留分析结果
+          // if (_currentIdx == 3) context.read<GardenScannerProvider>().resetAnalysis();
+          // 原来会重置识别结果，现在注释掉这段代码，保留识别结果
+          // if (_currentIdx == 1) context.read<IdentifyProvider>().resetResult();
 
           onItemSelected(newIdx);
           currentTab.value = newIdx; // 更新全局选中索引

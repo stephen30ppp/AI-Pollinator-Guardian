@@ -180,20 +180,6 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(height: 4),
         ],
       ),
-      bottomNavigationBar: PollinatorBottomNavBar(
-        selectedIndex: 4, // Chat is selected
-        onItemSelected: (index) {
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/');
-          } else if (index == 1) {
-            Navigator.pushNamed(context, '/identify');
-          } else if (index == 2) {
-            Navigator.pushNamed(context, '/map');
-          } else if (index == 3) {
-            Navigator.pushNamed(context, '/garden');
-          }
-        },
-      ),
     );
   }
 }

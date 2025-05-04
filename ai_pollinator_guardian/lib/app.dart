@@ -19,6 +19,7 @@ import 'features/authentication/screens/signup_screen.dart';
 import 'features/authentication/screens/forgot_password_screen.dart';
 import 'features/authentication/screens/profile_screen.dart';
 import 'features/authentication/auth_wrapper.dart';
+import 'ui/root_scaffold.dart'; // 导入RootScaffold替代MainContainerScreen
 
 class PollinatorGuardianApp extends StatelessWidget {
   const PollinatorGuardianApp({super.key});
@@ -185,11 +186,12 @@ class PollinatorGuardianApp extends StatelessWidget {
         initialRoute: '/',
         routes: {
           '/': (context) => const AuthWrapper(),
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => const RootScaffold(), // 使用RootScaffold替代MainContainerScreen
           '/login': (context) => const LoginScreen(),
           '/signup': (context) => const SignupScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/profile': (context) => const ProfileScreen(),
+          // 保留以下路由用于直接导航（如果需要）
           '/chat': (context) => const ChatScreen(),
           '/garden': (context) => const GardenScannerScreen(),
           '/identify': (context) => const PollinatorIdScreen(),

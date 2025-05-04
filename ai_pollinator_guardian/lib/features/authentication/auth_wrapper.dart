@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import './providers/auth_provider.dart';
 import './screens/login_screen.dart';
-import '../../../features/home/screens/home_screen.dart';
+import 'package:ai_pollinator_guardian/ui/root_scaffold.dart'; // 导入 RootScaffold
 import '../../../constants/design_tokens.dart';
 import 'package:lottie/lottie.dart';
 
@@ -108,7 +108,7 @@ class _AuthWrapperState extends State<AuthWrapper> with SingleTickerProviderStat
     return FadeTransition(
       opacity: _fadeAnimation,
       child: authProvider.isAuthenticated
-          ? const HomeScreen()
+          ? const RootScaffold() // 使用 RootScaffold 替代 HomeScreen
           : const LoginScreen(),
     );
   }

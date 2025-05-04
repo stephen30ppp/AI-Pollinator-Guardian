@@ -196,28 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
-      bottomNavigationBar: PollinatorBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-
-          // Handle navigation based on index
-          if (index == 0) {
-            // Home - already here, do nothing
-          } else if (index == 1) {
-            // Identify
-            Navigator.pushNamed(context, '/identify');
-          } else if (index == 2) {
-            Navigator.pushNamed(context, '/map');
-          } else if (index == 3) {
-            // Garden
-            Navigator.pushNamed(context, '/garden');
-          }
-        },
-      ),
     );
   }
 }

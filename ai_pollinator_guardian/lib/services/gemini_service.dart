@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';  // 添加导入以读取文件
 import 'package:firebase_core/firebase_core.dart';
@@ -40,30 +41,55 @@ class GeminiService {
     _isInitialized = true;
   }
 
-  Future<void> _startNewChat() async {
-    debugPrint('Starting new chat session...');
-    // Create system instructions as the first message in history
-    const systemInstructionText =
-        "You are a helpful pollinator gardening assistant called 'Bee Guide'. "
-        "Your primary goal is to help users protect and support pollinators. "
-        "You can help with identifying pollinators, suggesting plants that attract specific pollinators, "
-        "providing gardening tips, explaining pollinator behavior, and answering questions about "
-        "conservation. Keep your responses friendly, concise, and focused on helping users create "
-        "pollinator-friendly environments. Include specific, actionable advice when possible. "
-        "For plant recommendations, focus on native plants when appropriate, and explain why they're beneficial.";
-
-    // Create initial history with system instructions
-    final systemInstruction = Content.text(systemInstructionText);
-
-    // Start a chat session with the system instruction in the history
-    _chatSession = _model.startChat(history: [systemInstruction]);
-    debugPrint('Chat session started with system instructions.');
+  /// 使用提供的历史记录启动新的聊天会话
+  /// 解决了图片和其他上下文内容在创建新会话时丢失的问题
+  Future<void> _startNewChat([List<Content>? history]) async {
+    debugPrint('Starting new chat session with history...');
+    
+    // 如果没有提供历史记录，则只使用系统指令
+    if (history == null || history.isEmpty) {
+      const systemInstructionText =
+          "You are a helpful pollinator gardening assistant called 'Bee Guide'. "
+          "Your primary goal is to help users protect and support pollinators. "
+          "You can help with identifying pollinators, suggesting plants that attract specific pollinators, "
+          "providing gardening tips, explaining pollinator behavior, and answering questions about "
+          "conservation. Keep your responses friendly, concise, and focused on helping users create "
+          "pollinator-friendly environments. Include specific, actionable advice when possible. "
+          "For plant recommendations, focus on native plants when appropriate, and explain why they're beneficial.";
+      
+      final systemInstruction = Content.text(systemInstructionText);
+      _chatSession = _model.startChat(history: [systemInstruction]);
+      debugPrint('Chat session started with default system instructions only.');
+    } else {
+      // 使用提供的完整历史记录（包括图片、系统指令等）
+      _chatSession = _model.startChat(history: history);
+      debugPrint('Chat session started with full history (${history.length} items).');
+      
+      // 记录历史中的内容类型，帮助调试
+      int textCount = 0;
+      int imageCount = 0;
+      int multiCount = 0;
+      
+      for (var content in history) {
+        if (content.parts.length == 1 && content.parts[0] is TextPart) {
+          textCount++;
+        } else if (content.parts.any((part) => part is InlineDataPart)) {
+          imageCount++;
+        } else if (content.parts.length > 1) {
+          multiCount++;
+        }
+      }
+      
+      debugPrint('History contents: text=$textCount, image=$imageCount, multi=$multiCount');
+    }
   }
 
   // Start a new chat session
-  Future<ChatMessageModel> startNewChat() async {
+  Future<ChatMessageModel> startNewChat([List<Content>? history]) async {
     debugPrint('Restarting chat session via startNewChat()...');
-    await _startNewChat();
+    
+    // 使用传入的历史记录或默认空历史创建新会话
+    await _startNewChat(history);
 
     final welcomeMessageText =
         "Hello! I'm your pollinator gardening assistant. I can help with identifying pollinators, suggesting plants, and providing care tips. What would you like to know today?";
@@ -84,11 +110,14 @@ class GeminiService {
   }
 
   // Send a message to the chat
-  Future<ChatMessageModel> sendMessage(String message) async {
+  Future<ChatMessageModel> sendMessage(
+    String message, {
+    List<Content>? history,
+  }) async {
     debugPrint('sendMessage called with message: $message');
     if (_chatSession == null) {
-      debugPrint('No active chat session found, starting a new one.');
-      await _startNewChat();
+      debugPrint('No active chat session found, starting a new one with history.');
+      await _startNewChat(history);
     }
 
     try {
@@ -138,13 +167,16 @@ class GeminiService {
   Stream<ChatMessageModel> sendMessageStream(
     String message, {
     String? botMessageId,
+    List<Content>? history,
   }) async* {
     if (_chatSession == null) {
-      await _startNewChat();
+      debugPrint('No active chat session, creating new one with history...');
+      await _startNewChat(history);
     }
 
     try {
       final userContent = Content.text(message);
+      debugPrint('Sending message stream to chat session...');
       final responseStream = _chatSession!.sendMessageStream(userContent);
 
       // Use the ID passed in from ChatProvider, so the UI can match it
@@ -333,6 +365,111 @@ class GeminiService {
         isUser: false,
         timestamp: DateTime.now(),
       );
+    }
+  }
+
+  /// 使用完整历史记录发送消息并以流的形式获取响应
+  /// 
+  /// 这个方法结合了 sendMessageStream 和 _startNewChat 的功能，
+  /// 确保在处理消息时保留完整的历史上下文（包括图片）
+  Future<Stream<ChatMessageModel>> sendMessageStreamWithHistory(
+    List<Content> history, {
+    String? botMessageId,
+  }) async {
+    debugPrint('Creating chat session with provided history...');
+    
+    // 确保先创建一个包含完整历史的新聊天会话
+    await _startNewChat(history);
+    
+    // 提取最后一条消息作为用户的输入
+    Content userMessage;
+    if (history.isNotEmpty) {
+      userMessage = history.last;
+    } else {
+      // 如果历史为空，使用默认提示
+      userMessage = Content.text("Hello");
+    }
+    
+    try {
+      // 创建一个 StreamController 来转换响应
+      final controller = StreamController<ChatMessageModel>();
+      
+      // 确定消息 ID
+      final messageId = botMessageId ?? uuid.v4();
+      String fullText = '';
+      
+      // 使用已创建的聊天会话发送消息
+      final responseStream = _chatSession!.sendMessageStream(userMessage);
+      
+      // 处理流式响应
+      responseStream.listen(
+        (chunk) {
+          if (chunk.text != null) {
+            fullText += chunk.text!;
+            controller.add(ChatMessageModel(
+              id: messageId,
+              text: fullText,
+              isUser: false,
+              timestamp: DateTime.now(),
+            ));
+          }
+        },
+        onDone: () {
+          // 添加建议和资源等信息
+          final suggestions = <ChatSuggestion>[];
+          final resources = <ChatResource>[];
+          
+          if (fullText.contains("plant") || fullText.contains("garden")) {
+            suggestions.add(ChatSuggestion(text: "Show me more plants"));
+            suggestions.add(ChatSuggestion(text: "Gardening tips"));
+          }
+          if (fullText.toLowerCase().contains("bee") ||
+              fullText.toLowerCase().contains("pollinator")) {
+            resources.add(
+              ChatResource(
+                title: "Bee-Friendly Gardening Guide",
+                content: "Learn more about creating the perfect habitat...",
+                linkUrl: "guide",
+              ),
+            );
+          }
+          
+          controller.add(ChatMessageModel(
+            id: messageId,
+            text: fullText,
+            isUser: false,
+            timestamp: DateTime.now(),
+            suggestions: suggestions,
+            resources: resources,
+          ));
+          
+          controller.close();
+        },
+        onError: (e) {
+          debugPrint('Error in responseStream: $e');
+          controller.add(ChatMessageModel(
+            id: messageId,
+            text: "I'm sorry, I encountered an error. Please try again.",
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+          controller.close();
+        },
+      );
+      
+      return controller.stream;
+    } catch (e) {
+      debugPrint('Error in sendMessageStreamWithHistory: $e');
+      // 在出错时创建一个只包含错误消息的流
+      final controller = StreamController<ChatMessageModel>();
+      controller.add(ChatMessageModel(
+        id: botMessageId ?? uuid.v4(),
+        text: "I'm sorry, I encountered an error while processing your request.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+      controller.close();
+      return controller.stream;
     }
   }
 }

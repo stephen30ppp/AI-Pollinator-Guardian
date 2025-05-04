@@ -564,18 +564,6 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
           );
         },
       ),
-      bottomNavigationBar: PollinatorBottomNavBar(
-        selectedIndex: 2, // Map is selected
-        onItemSelected: (index) {
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/');
-          } else if (index == 1) {
-            Navigator.pushNamed(context, '/identify');
-          } else if (index == 3) {
-            Navigator.pushNamed(context, '/garden');
-          }
-        },
-      ),
     );
   }
 

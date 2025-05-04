@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:ai_pollinator_guardian/utils/global.dart'; // 导入导航键
+import 'package:ai_pollinator_guardian/features/pollinator_id/screens/pollinator_id_screen.dart'; // 导入结果页面
 import 'info_card.dart';
 import 'action_button.dart';
 import 'past_identification_item.dart';
@@ -25,6 +27,14 @@ class IdentificationResultView extends StatelessWidget {
     required this.onSelectPastIdentification,
     required this.onCaptureImage,
   });
+
+  // 添加导航到详情页的方法
+  void _navigateToDetailPage(BuildContext context) {
+    // 使用标签页1的导航器导航到详情页
+    navKeys[1]!.currentState!.push(
+      MaterialPageRoute(builder: (_) => IdentifyResultPage(identificationResult)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +175,14 @@ class IdentificationResultView extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
+
+                // 添加查看详情按钮
+                // ActionButton(
+                //   label: '查看详细信息',
+                //   onPressed: () => _navigateToDetailPage(context),
+                // ),
+
+                const SizedBox(height: 12),
 
                 // Action buttons
                 ActionButton(

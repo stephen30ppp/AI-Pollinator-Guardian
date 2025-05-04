@@ -19,6 +19,7 @@ import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/action_it
 import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/image_gallery.dart';
 import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/action_button.dart';
 import 'garden_history_screen.dart';
+import 'recommended_plants_detail_page.dart';
 
 class GardenScannerScreen extends StatefulWidget {
   const GardenScannerScreen({super.key});
@@ -47,6 +48,37 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     super.initState();
     _analyzerService = GardenAnalyzerService(_geminiService);
     _initializeService();
+    
+    // 添加对GardenScannerProvider的监听
+    context.read<GardenScannerProvider>().addListener(_listener);
+  }
+
+  // GardenScannerProvider状态变化监听器
+  void _listener() {
+    // 如果需要对Provider状态变化作出反应，可以在这里实现
+    final provider = context.read<GardenScannerProvider>();
+    
+    // 如果Provider中有分析结果但本地状态没有，则同步本地状态
+    if (provider.analysisReady && _analysis == null && mounted) {
+      setState(() {
+        _analysis = provider.report;
+        _gardenImages = List.from(provider.gardenImages);
+      });
+    }
+    
+    // 如果Provider中没有分析结果但本地状态有，则重置本地状态
+    if (!provider.analysisReady && _analysis != null && mounted) {
+      setState(() {
+        _analysis = null;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // 移除监听器
+    context.read<GardenScannerProvider>().removeListener(_listener);
+    super.dispose();
   }
 
   Future<void> _initializeService() async {
@@ -119,12 +151,22 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
         _isAnalyzing = false;
       });
 
+      // 分析成功并且组件仍挂载时更新Provider
+      if (response != null && mounted) {
+        context.read<GardenScannerProvider>().setAnalysis(response, images: _gardenImages);
+      }
+
       _onAnalysisComplete(context);
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
         _analysisError = 'Error analyzing garden: $e';
       });
+
+      // 分析失败时重置Provider
+      if (mounted) {
+        context.read<GardenScannerProvider>().resetAnalysis();
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error analyzing garden: $e')),
@@ -137,6 +179,11 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
       _gardenImages = [];
       _analysis = null;
     });
+    
+    // 重置分析时同时更新Provider
+    if (mounted) {
+      context.read<GardenScannerProvider>().resetAnalysis();
+    }
   }
 
   // Open chat panel method
@@ -246,15 +293,7 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Update GardenScannerProvider with analysis results
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_analysis != null) {
-        context.read<GardenScannerProvider>().setAnalysis(_analysis, images: _gardenImages);
-      } else {
-        context.read<GardenScannerProvider>().resetAnalysis();
-      }
-    });
-
+    // 修改Provider更新方式，从build方法移到生命周期安全的地方
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -263,18 +302,38 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
         ),
         backgroundColor: AppColors.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
+        // 统一的返回按钮策略
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            final nav = Navigator.of(context);
+
+            // ① 还有上一层 —— 直接回退到本 tab 的首个路由
+            if (nav.canPop()) {
+              nav.popUntil((route) => route.isFirst);
+              return;                           // <‑‑ 已处理
+            }
+
+            // ② 已经在 Garden‑首页，清除分析结果
+            _resetAnalysis(); // 重置分析结果
+            
+            // 更新 Provider 状态
+            if (mounted) {
+              context.read<GardenScannerProvider>().resetAnalysis();
+            }
+          },
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.history, color: Colors.white),
             onPressed: () {
-              Navigator.push(
-                context,
+              // 使用正确的导航方式
+              Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => GardenHistoryScreen()),
-              );
+              ).then((_) {
+                // 页面返回后的操作，如果需要
+                // if (mounted) context.read<GardenScannerProvider>().resetAnalysis();
+              });
             },
           ),
         ],
@@ -325,18 +384,6 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
             },
           ),
         ],
-      ),
-      bottomNavigationBar: PollinatorBottomNavBar(
-        selectedIndex: 3, // Garden is selected
-        onItemSelected: (index) {
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/');
-          } else if (index == 1) {
-            Navigator.pushNamed(context, '/identify');
-          } else if (index == 2) {
-            Navigator.pushNamed(context, '/map');
-          }
-        },
       ),
     );
   }
@@ -514,6 +561,9 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
 
   Widget _buildRecommendedPlantsCard() {
     final plants = _analysis!['recommended_plants'] as List;
+    // 添加获取percentage变量的代码
+    final score = _analysis!['pollinator_score'];
+    final percentage = score['percentage'] as int;
 
     return Card(
       elevation: 2,
@@ -559,7 +609,15 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
                 ActionButton(
                   label: 'View All Recommendations',
                   onPressed: () {
-                    // Navigate to detailed recommendations
+                    // 使用正确的导航方式，保持在Garden标签页的导航栈内
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RecommendedPlantsDetailPage(
+                          plants: plants,
+                          gardenScore: percentage,
+                        ),
+                      ),
+                    );
                   },
                 ),
               ],
