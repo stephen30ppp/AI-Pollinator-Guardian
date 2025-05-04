@@ -1,9 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_pollinator_guardian/constants/app_colors.dart';
 import 'package:ai_pollinator_guardian/widgets/bottom_navigation_bar.dart';
 import 'package:ai_pollinator_guardian/features/community_map/providers/community_map_provider.dart';
+import 'package:ai_pollinator_guardian/features/community_map/widgets/sighting_info_card.dart';
 
 class CommunityMapScreen extends StatefulWidget {
   const CommunityMapScreen({super.key});
@@ -16,16 +19,175 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
   GoogleMapController? _mapController;
 
   bool _showSearch = false;
+  bool _showFilters = false;
   final TextEditingController _searchController = TextEditingController();
 
   // Default center location (can be adjusted based on user's location)
   static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
 
-  // Map style - You can customize this if needed
-  final String _mapStyle = '';
-
-  // Filter dialog visibility
-  bool _showFilters = false;
+  // Custom map style - Night Lite theme to make markers pop
+  final String _mapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#f5f5f5"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#f5f5f5"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.land_parcel",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#bdbdbd"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#eeeeee"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#e5e5e5"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9e9e9e"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#ffffff"
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#dadada"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9e9e9e"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#e5e5e5"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#eeeeee"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#e9e9e9"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9e9e9e"
+      }
+    ]
+  }
+]
+''';
 
   @override
   void initState() {
@@ -61,10 +223,8 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
     debugPrint('CommunityMapScreen: Map controller created');
     _mapController = controller;
 
-    // Apply custom map style if needed
-    if (_mapStyle.isNotEmpty) {
-      _mapController?.setMapStyle(_mapStyle);
-    }
+    // Apply custom map style
+    _mapController?.setMapStyle(_mapStyle);
 
     // Get current provider
     final provider = Provider.of<CommunityMapProvider>(context, listen: false);
@@ -92,6 +252,9 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
   void _onMarkerTapped(String sightingId) {
     debugPrint('CommunityMapScreen: Marker tapped: $sightingId');
+    
+    // Add haptic feedback for better interaction
+    HapticFeedback.selectionClick();
 
     // Get the details of the tapped sighting
     final provider = Provider.of<CommunityMapProvider>(context, listen: false);
@@ -106,155 +269,24 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sighting details header
-                Row(
-                  children: [
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(
-                          image: NetworkImage(
-                            sighting['imageUrl'] ??
-                                'https://via.placeholder.com/70',
-                          ),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            sighting['commonName'] ?? 'Unknown Pollinator',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            sighting['scientificName'] ?? '',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Details grid
-                Row(
-                  children: [
-                    _buildDetailItem(
-                      label: 'Spotted',
-                      value: sighting['timeAgo'] ?? 'Today',
-                    ),
-                    const VerticalDivider(
-                      thickness: 1,
-                      width: 1,
-                      color: Colors.grey,
-                    ),
-                    _buildDetailItem(
-                      label: 'Distance',
-                      value: sighting['distance'] ?? '2.3 km',
-                    ),
-                    const VerticalDivider(
-                      thickness: 1,
-                      width: 1,
-                      color: Colors.grey,
-                    ),
-                    _buildDetailItem(
-                      label: 'Nearby',
-                      value: '${sighting['nearbyCount'] ?? 5}',
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Action buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          // Get directions implementation would go here
-                        },
-                        child: const Text('Directions'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          // Show more info implementation would go here
-                        },
-                        child: const Text('More Info'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-    );
-  }
-
-  Widget _buildDetailItem({required String label, required String value}) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
+      builder: (context) => SightingInfoCard(
+        pollinatorName: sighting['commonName'] ?? 'Unknown Pollinator',
+        scientificName: sighting['scientificName'] ?? '',
+        imageUrl: sighting['imageUrl'] ?? 'https://via.placeholder.com/70',
+        spotDate: sighting['timeAgo'] ?? 'Today',
+        distance: sighting['distance'] ?? '2.3 km',
+        nearbyCount: sighting['nearbyCount'] ?? 5,
+        onDirections: () {
+          Navigator.pop(context);
+          // Get directions implementation would go here
+        },
+        onMoreInfo: () {
+          Navigator.pop(context);
+          // Show more info implementation would go here
+        },
+        onClose: () {
+          Navigator.pop(context);
+        },
       ),
     );
   }
@@ -262,6 +294,11 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
   @override
   Widget build(BuildContext context) {
     debugPrint('CommunityMapScreen: Building screen');
+    
+    // Calculate safe areas for better positioning
+    final topPadding = MediaQuery.of(context).padding.top;
+    final kToolbarHeight = AppBar().preferredSize.height;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -276,6 +313,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
               setState(() {
                 _showSearch = !_showSearch;
               });
+              HapticFeedback.lightImpact();
               debugPrint('CommunityMapScreen: Search toggle: $_showSearch');
             },
           ),
@@ -302,9 +340,9 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
             children: [
               // Google Map
               Container(
-                color: Colors.grey[200], // Add background color to check if the container is rendered correctly
-                width: MediaQuery.of(context).size.width, // Ensure the container takes up the full screen width
-                height: MediaQuery.of(context).size.height, // Ensure the container takes up the full screen height
+                color: Colors.grey[200],
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
                 child: GoogleMap(
                   onMapCreated: (controller) {
                     debugPrint('CommunityMapScreen: Map creation callback fired');
@@ -324,99 +362,83 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   myLocationEnabled: true,
                   myLocationButtonEnabled: false,
                   mapToolbarEnabled: false,
-                  zoomControlsEnabled: true, // Enable zoom controls for easier testing
-                  compassEnabled: true, // Enable compass for easier testing
+                  zoomControlsEnabled: false,
+                  compassEnabled: true,
                 ),
               ),
 
-              // Search Bar (conditionally shown)
+              // Search Bar (Floating Search Chip)
               if (_showSearch)
                 Positioned(
-                  top: 16,
+                  top: topPadding + kToolbarHeight + 16,
                   left: 16,
                   right: 16,
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                  child: SearchBar(
+                    leading: Icon(Icons.search, color: Colors.grey[600]),
+                    trailing: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            _showSearch = false;
+                            _searchController.clear();
+                          });
+                        },
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.search, color: Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: const InputDecoration(
-                                hintText: 'Search pollinators...',
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                              onSubmitted: (value) {
-                                provider.searchPollinators(value);
-                                setState(() {
-                                  _showSearch = false;
-                                });
-                              },
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              setState(() {
-                                _showSearch = false;
-                                _searchController.clear();
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
+                    hintText: 'Search pollinators...',
+                    controller: _searchController,
+                    onSubmitted: (value) {
+                      provider.searchPollinators(value);
+                      setState(() {
+                        _showSearch = false;
+                      });
+                    },
                   ),
                 ),
 
               // Stats Row
               Positioned(
-                top: _showSearch ? 80 : 16,
+                top: _showSearch ? topPadding + kToolbarHeight + 80 : topPadding + kToolbarHeight - 60,
                 left: 16,
                 right: 16,
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStatItem(
-                          value: '${provider.todaySightings}',
-                          label: 'Sightings Today',
-                        ),
-                        _buildStatItem(
-                          value: '${provider.speciesCount}',
-                          label: 'Species',
-                        ),
-                        _buildStatItem(
-                          value: '${provider.searchRadius}km',
-                          label: 'Radius',
-                        ),
-                      ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem(
+                            value: '${provider.todaySightings}',
+                            label: 'Sightings Today',
+                          ),
+                          _buildStatItem(
+                            value: '${provider.speciesCount}',
+                            label: 'Species',
+                          ),
+                          _buildStatItem(
+                            value: '${provider.searchRadius}km',
+                            label: 'Radius',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -424,46 +446,54 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
               // Map Legend
               Positioned(
-                top: _showSearch ? 150 : 86,
+                top: _showSearch 
+                    ? topPadding + kToolbarHeight + 150 
+                    : topPadding + kToolbarHeight + 40,
                 right: 16,
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    width: 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Pollinator Types',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      width: 140,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            spreadRadius: 1,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildLegendItem(
-                          color: Colors.amber,
-                          label: 'Bees (${provider.beeSightingsCount})',
-                        ),
-                        _buildLegendItem(
-                          color: Colors.deepOrange,
-                          label:
-                              'Butterflies (${provider.butterflySightingsCount})',
-                        ),
-                        _buildLegendItem(
-                          color: Colors.purple,
-                          label: 'Other (${provider.otherSightingsCount})',
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Pollinator Types',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildLegendItem(
+                            color: Colors.amber[600]!,
+                            label: 'Bees (${provider.beeSightingsCount})',
+                          ),
+                          _buildLegendItem(
+                            color: Colors.deepPurple[300]!,
+                            label: 'Butterflies (${provider.butterflySightingsCount})',
+                          ),
+                          _buildLegendItem(
+                            color: Colors.teal[400]!,
+                            label: 'Other (${provider.otherSightingsCount})',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -479,6 +509,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                       icon: Icons.add,
                       onPressed: () {
                         debugPrint('CommunityMapScreen: Zoom in');
+                        HapticFeedback.lightImpact();
                         _mapController?.animateCamera(CameraUpdate.zoomIn());
                       },
                     ),
@@ -487,6 +518,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                       icon: Icons.remove,
                       onPressed: () {
                         debugPrint('CommunityMapScreen: Zoom out');
+                        HapticFeedback.lightImpact();
                         _mapController?.animateCamera(CameraUpdate.zoomOut());
                       },
                     ),
@@ -495,6 +527,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                       icon: Icons.my_location,
                       onPressed: () {
                         debugPrint('CommunityMapScreen: My location pressed');
+                        HapticFeedback.mediumImpact();
                         if (provider.currentLocation != null) {
                           _moveToLocation(
                             LatLng(
@@ -510,6 +543,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                       icon: Icons.refresh,
                       onPressed: () {
                         debugPrint('CommunityMapScreen: Refresh pressed');
+                        HapticFeedback.mediumImpact();
                         provider.fetchPollinators();
                       },
                     ),
@@ -522,8 +556,8 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                 bottom: 16,
                 left: 16,
                 child: Container(
-                  width: 50,
-                  height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
                     shape: BoxShape.circle,
@@ -535,19 +569,24 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      _showFilters ? Icons.close : Icons.filter_list,
-                      color: Colors.white,
+                  child: Semantics(
+                    label: _showFilters ? 'Close filters' : 'Show filters',
+                    child: IconButton(
+                      icon: Icon(
+                        _showFilters ? Icons.close : Icons.filter_list,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showFilters = !_showFilters;
+                        });
+                        HapticFeedback.mediumImpact();
+                        debugPrint(
+                          'CommunityMapScreen: Filter toggle: $_showFilters',
+                        );
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _showFilters = !_showFilters;
-                      });
-                      debugPrint(
-                        'CommunityMapScreen: Filter toggle: $_showFilters',
-                      );
-                    },
                   ),
                 ),
               ),
@@ -555,10 +594,18 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
               // Filter Sheet (Conditionally shown)
               if (_showFilters)
                 Positioned(
-                  top: _showSearch ? 150 : 86,
+                  top: _showSearch 
+                      ? topPadding + kToolbarHeight + 150 
+                      : topPadding + kToolbarHeight + 86,
                   left: 16,
                   right: 16,
-                  child: _buildFilterCard(provider),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      child: _buildFilterCard(provider),
+                    ),
+                  ),
                 ),
             ],
           );
@@ -585,12 +632,18 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 24, // Increased from 20 for better typography rhythm
             fontWeight: FontWeight.bold,
             color: AppColors.primaryColor,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label, 
+          style: TextStyle(
+            fontSize: 12, 
+            color: Colors.grey[600]
+          ),
+        ),
       ],
     );
   }
@@ -606,7 +659,15 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[800])),
+          Expanded(
+            child: Text(
+              label, 
+              style: TextStyle(
+                fontSize: 12, 
+                color: Colors.grey[800]
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -617,8 +678,8 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
     required VoidCallback onPressed,
   }) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 48, // Increased from 40 for better tappability
+      height: 48, // Increased from 40 for better tappability
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -631,7 +692,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
         ],
       ),
       child: IconButton(
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: 20),
         color: Colors.black87,
         padding: EdgeInsets.zero,
         onPressed: onPressed,
@@ -641,10 +702,11 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
 
   Widget _buildFilterCard(CommunityMapProvider provider) {
     return Card(
-      elevation: 4,
+      elevation: 0, // Reduced since we have backdrop filter
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.white.withOpacity(0.85),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -654,13 +716,14 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
               children: [
                 const Text(
                   'Filter Sightings',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 GestureDetector(
                   onTap: () {
                     setState(() {
                       _showFilters = false;
                     });
+                    HapticFeedback.lightImpact();
                   },
                   child: Icon(Icons.close, size: 20, color: Colors.grey[700]),
                 ),
@@ -684,6 +747,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   isSelected: provider.pollinatorTypeFilter == null,
                   onTap: () {
                     provider.setPollinatorTypeFilter(null);
+                    HapticFeedback.selectionClick();
                   },
                 ),
                 _buildFilterChip(
@@ -691,6 +755,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   isSelected: provider.pollinatorTypeFilter == 'bee',
                   onTap: () {
                     provider.setPollinatorTypeFilter('bee');
+                    HapticFeedback.selectionClick();
                   },
                 ),
                 _buildFilterChip(
@@ -698,6 +763,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   isSelected: provider.pollinatorTypeFilter == 'butterfly',
                   onTap: () {
                     provider.setPollinatorTypeFilter('butterfly');
+                    HapticFeedback.selectionClick();
                   },
                 ),
                 _buildFilterChip(
@@ -705,6 +771,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   isSelected: provider.pollinatorTypeFilter == 'beetle',
                   onTap: () {
                     provider.setPollinatorTypeFilter('beetle');
+                    HapticFeedback.selectionClick();
                   },
                 ),
                 _buildFilterChip(
@@ -712,6 +779,7 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                   isSelected: provider.pollinatorTypeFilter == 'other',
                   onTap: () {
                     provider.setPollinatorTypeFilter('other');
+                    HapticFeedback.selectionClick();
                   },
                 ),
               ],
@@ -729,40 +797,44 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
             Row(
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: provider.startDate ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
-                      );
-                      if (date != null) {
-                        provider.setDateRange(
-                          startDate: date,
-                          endDate: provider.endDate,
+                  child: Semantics(
+                    label: 'Select start date',
+                    child: InkWell(
+                      onTap: () async {
+                        HapticFeedback.lightImpact();
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: provider.startDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
                         );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        provider.startDate != null
-                            ? '${provider.startDate!.day}/${provider.startDate!.month}/${provider.startDate!.year}'
-                            : 'Start Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color:
-                              provider.startDate != null
-                                  ? Colors.black
-                                  : Colors.grey,
+                        if (date != null) {
+                          provider.setDateRange(
+                            startDate: date,
+                            endDate: provider.endDate,
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          provider.startDate != null
+                              ? '${provider.startDate!.day}/${provider.startDate!.month}/${provider.startDate!.year}'
+                              : 'Start Date',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color:
+                                provider.startDate != null
+                                    ? Colors.black
+                                    : Colors.grey,
+                          ),
                         ),
                       ),
                     ),
@@ -772,40 +844,44 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                 const Text('to'),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: provider.endDate ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
-                      );
-                      if (date != null) {
-                        provider.setDateRange(
-                          startDate: provider.startDate,
-                          endDate: date,
+                  child: Semantics(
+                    label: 'Select end date',
+                    child: InkWell(
+                      onTap: () async {
+                        HapticFeedback.lightImpact();
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: provider.endDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
                         );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        provider.endDate != null
-                            ? '${provider.endDate!.day}/${provider.endDate!.month}/${provider.endDate!.year}'
-                            : 'End Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color:
-                              provider.endDate != null
-                                  ? Colors.black
-                                  : Colors.grey,
+                        if (date != null) {
+                          provider.setDateRange(
+                            startDate: provider.startDate,
+                            endDate: date,
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          provider.endDate != null
+                              ? '${provider.endDate!.day}/${provider.endDate!.month}/${provider.endDate!.year}'
+                              : 'End Date',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color:
+                                provider.endDate != null
+                                    ? Colors.black
+                                    : Colors.grey,
+                          ),
                         ),
                       ),
                     ),
@@ -814,13 +890,25 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Search Radius',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Search Radius',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey,
+                  ),
+                ),
+                Text(
+                  '${provider.searchRadius} km',
+                  style: const TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w500
+                  ),
+                ),
+              ],
             ),
             Slider(
               value: provider.searchRadius.toDouble(),
@@ -833,38 +921,58 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
                 provider.setSearchRadius(value.round());
               },
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${provider.searchRadius} km',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.right,
-            ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
+            Semantics(
+              label: 'Apply filters',
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showFilters = false;
+                  });
+                  HapticFeedback.mediumImpact();
+                  provider.applyFilters();
+                },
+                child: const Text(
+                  'Apply Filters',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
-              onPressed: () {
-                setState(() {
-                  _showFilters = false;
-                });
-                provider.applyFilters();
-              },
-              child: const Text('Apply Filters'),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[200],
-                foregroundColor: Colors.black87,
-                minimumSize: const Size.fromHeight(48),
+            Semantics(
+              label: 'Reset all filters',
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[200],
+                  foregroundColor: Colors.black87,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  provider.resetFilters();
+                },
+                child: const Text(
+                  'Reset All',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
-              onPressed: () {
-                provider.resetFilters();
-              },
-              child: const Text('Reset All'),
             ),
           ],
         ),
@@ -877,20 +985,47 @@ class _CommunityMapScreenState extends State<CommunityMapScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor : Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: isSelected ? Colors.white : Colors.black87,
+    // Determine color based on label for semantic coloring
+    Color? chipColor;
+    if (label == 'Bees') {
+      chipColor = Colors.amber[600];
+    } else if (label == 'Butterflies') {
+      chipColor = Colors.deepPurple[300];
+    } else if (label == 'Beetles') {
+      chipColor = Colors.brown[400];
+    } else if (label == 'Other') {
+      chipColor = Colors.teal[400];
+    } else {
+      chipColor = isSelected ? AppColors.primaryColor : Colors.grey[200];
+    }
+    
+    return Semantics(
+      button: true,
+      label: 'Filter by $label',
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 8, right: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? chipColor : Colors.grey[200],
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isSelected ? [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ] : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
           ),
         ),
       ),
