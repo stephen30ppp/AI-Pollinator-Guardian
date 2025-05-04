@@ -342,7 +342,7 @@ class CommunityMapProvider with ChangeNotifier {
         'latitude': centerLat + 0.002,
         'longitude': centerLng + 0.003,
         'imageUrl':
-            'https://upload.wikimedia.org/wikipedia/commons/d/d4/Bombus_terrestris_%28flying%29.jpg',
+            'https://www.insectweek.org/wp-content/uploads/webform_import20221201/Bombus%20terrestris%20terrestris-8894-scaled.jpg',
         'date': DateTime.now().subtract(const Duration(hours: 3)),
         'timeAgo': '3 hours ago',
         'distance': '0.4 km',
@@ -357,7 +357,7 @@ class CommunityMapProvider with ChangeNotifier {
         'latitude': centerLat - 0.001,
         'longitude': centerLng + 0.002,
         'imageUrl':
-            'https://upload.wikimedia.org/wikipedia/commons/e/ea/Monarch_in_flight_over_zinnia_flower.jpg',
+            'https://img.freepik.com/premium-photo/monarch-butterfly-flight-among-zinnias_1048944-23078553.jpg',
         'date': DateTime.now().subtract(const Duration(days: 1)),
         'timeAgo': 'Yesterday',
         'distance': '0.2 km',
@@ -372,7 +372,7 @@ class CommunityMapProvider with ChangeNotifier {
         'latitude': centerLat + 0.003,
         'longitude': centerLng - 0.001,
         'imageUrl':
-            'https://upload.wikimedia.org/wikipedia/commons/4/4d/Apis_mellifera_Western_honey_bee.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Apis_mellifera_Western_honey_bee.jpg/1200px-Apis_mellifera_Western_honey_bee.jpg',
         'date': DateTime.now().subtract(const Duration(hours: 6)),
         'timeAgo': '6 hours ago',
         'distance': '0.6 km',
@@ -387,7 +387,7 @@ class CommunityMapProvider with ChangeNotifier {
         'latitude': centerLat - 0.002,
         'longitude': centerLng - 0.003,
         'imageUrl':
-            'https://upload.wikimedia.org/wikipedia/commons/c/c5/Vanessa_cardui_-_Painted_Lady_on_Buddleja.jpg',
+            'https://thumbs.dreamstime.com/b/painted-lady-butterfly-vanessa-cardui-buddleja-bush-lothersdale-north-yorkshire-england-uk-painted-lady-vanessa-cardui-299151209.jpg',
         'date': DateTime.now().subtract(const Duration(days: 2)),
         'timeAgo': '2 days ago',
         'distance': '0.7 km',
@@ -403,7 +403,7 @@ class CommunityMapProvider with ChangeNotifier {
         'latitude': centerLat,
         'longitude': centerLng + 0.004,
         'imageUrl':
-            'https://upload.wikimedia.org/wikipedia/commons/9/9c/Syrphidae_poster.jpg',
+            'https://static.printler.com/media/photo/134646.jpg',
         'date': DateTime.now().subtract(const Duration(hours: 24)),
         'timeAgo': '1 day ago',
         'distance': '0.5 km',
