@@ -339,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       title: 'Your Activity',
                       actionWidget: _buildSectionAction(
                         label: _isActivityExpanded ? 'Collapse' : 'Expand',
-                        trailing: const Icon(Icons.expand_more, size: 16),
+                        trailing: const Icon(Icons.expand_more, size: 12),
                         rotateTrailing: true,
                         onPressed: _toggleActivityExpansion,
                       ),

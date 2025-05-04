@@ -11,6 +11,7 @@ class ActivityStatCard extends StatelessWidget {
   final int? target; // Target for progress indicator
   final bool showProgress; // Whether to show circular progress
   final bool isAddCard; // New property to indicate if this is an "Add Target" card
+  static const double _ringDiameter = 120;
 
   const ActivityStatCard({
     super.key,
@@ -45,7 +46,8 @@ class ActivityStatCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final bool canTap = onTap != null;
     final bool displayProgress = showProgress && target != null && target! > 0;
-    final double progressValue = displayProgress ? (value / target!).clamp(0.0, 1.0) : 0.0;
+    final double progressValue =
+        displayProgress ? (value / target!).clamp(0.0, 1.0) : 0.0;
 
     // Handle the add card styling differently
     if (isAddCard) {
@@ -57,20 +59,32 @@ class ActivityStatCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: Card(
-          color: canTap ? colorScheme.secondaryContainer : colorScheme.surfaceVariant.withOpacity(0.5),
+          color:
+              canTap
+                  ? colorScheme.secondaryContainer
+                  : colorScheme.surfaceVariant.withOpacity(0.5),
           elevation: canTap ? 3 : 1,
           shadowColor: colorScheme.shadow.withOpacity(canTap ? 0.15 : 0.05),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
           ),
           child: InkWell(
-            onTap: canTap ? () {
-              HapticFeedback.selectionClick();
-              onTap!();
-            } : null,
+            onTap:
+                canTap
+                    ? () {
+                      HapticFeedback.selectionClick();
+                      onTap!();
+                    }
+                    : null,
             borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
-            splashColor: canTap ? colorScheme.primary.withOpacity(0.1) : Colors.transparent,
-            highlightColor: canTap ? colorScheme.primary.withOpacity(0.05) : Colors.transparent,
+            splashColor:
+                canTap
+                    ? colorScheme.primary.withOpacity(0.1)
+                    : Colors.transparent,
+            highlightColor:
+                canTap
+                    ? colorScheme.primary.withOpacity(0.05)
+                    : Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.all(DesignTokens.m),
               child: Column(
@@ -79,12 +93,19 @@ class ActivityStatCard extends StatelessWidget {
                 children: [
                   // Top block – give every card exactly the same height
                   SizedBox(
-                    height: 94, // Reduced slightly from 100 to accommodate the bottom section
+                    height:
+                        94, // Reduced slightly from 100 to accommodate the bottom section
                     width: double.infinity,
                     child: Center(
-                      child: displayProgress
-                          ? _buildProgressRing(colorScheme, progressValue, value, target!)
-                          : _buildValueDisplay(colorScheme, value, icon),
+                      child:
+                          displayProgress
+                              ? _buildProgressRing(
+                                colorScheme,
+                                progressValue,
+                                value,
+                                target!,
+                              )
+                              : _buildValueDisplay(colorScheme, value, icon),
                     ),
                   ),
 
@@ -100,9 +121,13 @@ class ActivityStatCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: DesignTokens.bodyMedium.copyWith(
-                          color: canTap
-                              ? colorScheme.onSecondaryContainer.withOpacity(0.9)
-                              : colorScheme.onSurfaceVariant.withOpacity(0.8),
+                          color:
+                              canTap
+                                  ? colorScheme.onSecondaryContainer
+                                      .withOpacity(0.9)
+                                  : colorScheme.onSurfaceVariant.withOpacity(
+                                    0.8,
+                                  ),
                           fontWeight: FontWeight.w500,
                           height: 1.2,
                         ),
@@ -168,7 +193,7 @@ class ActivityStatCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   // Label – fixed-height box keeps every card aligned
                   SizedBox(
                     height: 42, // Reduced from 48 to fit within the card
@@ -196,16 +221,22 @@ class ActivityStatCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressRing(ColorScheme colorScheme, double progressValue, int currentValue, int targetValue) {
+  Widget _buildProgressRing(
+    ColorScheme colorScheme,
+    double progressValue,
+    int currentValue,
+    int targetValue,
+  ) {
     return Semantics(
       label: '$currentValue out of $targetValue $label',
       value: '${(progressValue * 100).round()}%',
       child: SizedBox(
-        width: 90,
-        height: 90,
+        width: _ringDiameter,
+        height: _ringDiameter,
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // ---------- animated progress arc ----------
             TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0, end: progressValue),
               duration: const Duration(milliseconds: 1200),
@@ -213,18 +244,18 @@ class ActivityStatCard extends StatelessWidget {
               builder: (context, animatedValue, _) {
                 return CircularProgressIndicator(
                   value: animatedValue,
-                  strokeWidth: 7,
+                  strokeWidth: 7, // thickness
+                  strokeCap: StrokeCap.round,
                   backgroundColor: colorScheme.primary.withOpacity(0.15),
                   valueColor: AlwaysStoppedAnimation(colorScheme.primary),
-                  strokeCap: StrokeCap.round,
                 );
-              }
+              },
             ),
+
             Column(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated Counter for the main value
+                // animated counter for the current value
                 TweenAnimationBuilder<int>(
                   tween: IntTween(begin: 0, end: currentValue),
                   duration: const Duration(milliseconds: 1000),
@@ -234,13 +265,12 @@ class ActivityStatCard extends StatelessWidget {
                       '$animatedValue',
                       style: DesignTokens.titleLarge.copyWith(
                         color: colorScheme.onSecondaryContainer,
-                        fontSize: 22, // Slightly reduced to prevent overflow
+                        fontSize: 22, // scales nicely
                         fontWeight: FontWeight.w600,
                       ),
                     );
                   },
                 ),
-                // Target value display
                 Text(
                   '/ $targetValue',
                   style: DesignTokens.bodySmall.copyWith(
@@ -256,7 +286,11 @@ class ActivityStatCard extends StatelessWidget {
     );
   }
 
-  Widget _buildValueDisplay(ColorScheme colorScheme, int displayValue, IconData displayIcon) {
+  Widget _buildValueDisplay(
+    ColorScheme colorScheme,
+    int displayValue,
+    IconData displayIcon,
+  ) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
@@ -269,14 +303,9 @@ class ActivityStatCard extends StatelessWidget {
             color: colorScheme.primary.withOpacity(0.15),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            displayIcon,
-            color: colorScheme.primary,
-            size: 24,
-          ),
+          child: Icon(displayIcon, color: colorScheme.primary, size: 24),
         ),
         const SizedBox(height: DesignTokens.xxs), // Further reduced spacing
-
         // Animated counter for the value
         Semantics(
           label: 'You have $displayValue $label',
