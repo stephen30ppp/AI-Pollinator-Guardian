@@ -18,6 +18,7 @@ import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/plant_ite
 import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/action_item.dart';
 import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/image_gallery.dart';
 import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/action_button.dart';
+import 'package:ai_pollinator_guardian/features/garden_scanner/widgets/save_progress_overlay.dart';
 import 'garden_history_screen.dart';
 
 class GardenScannerScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class GardenScannerScreen extends StatefulWidget {
   _GardenScannerScreenState createState() => _GardenScannerScreenState();
 }
 
-class _GardenScannerScreenState extends State<GardenScannerScreen> {
+class _GardenScannerScreenState extends State<GardenScannerScreen> with SingleTickerProviderStateMixin {
   final StorageService _storageService = StorageService();
   final GeminiService _geminiService = GeminiService();
   final FirebaseService _firebaseService = FirebaseService();
@@ -39,6 +40,15 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
   bool _isAnalyzing = false;
   String _analysisError = '';
 
+  // Save progress tracking
+  bool _isSaving = false;
+  double _saveProgress = 0.0;
+  SaveStage _saveStage = SaveStage.preparing;
+  String? _saveErrorMessage;
+  
+  // Animation controller for the save button
+  late AnimationController _saveButtonAnimController;
+  
   // Garden analysis results
   Map<String, dynamic>? _analysis;
 
@@ -47,6 +57,18 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
     super.initState();
     _analyzerService = GardenAnalyzerService(_geminiService);
     _initializeService();
+    
+    // Initialize animation controller for the save button
+    _saveButtonAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+  }
+  
+  @override
+  void dispose() {
+    _saveButtonAnimController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeService() async {
@@ -188,12 +210,28 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
       return;
     }
     
-    // Show loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saving garden profile...')),
-    );
+    if (_isSaving) {
+      // Already saving, don't start another save process
+      return;
+    }
+    
+    // Start pulsing animation for the button
+    _saveButtonAnimController.repeat(reverse: true);
+    
+    // Show the saving state
+    setState(() {
+      _isSaving = true;
+      _saveProgress = 0.0;
+      _saveStage = SaveStage.preparing;
+      _saveErrorMessage = null;
+    });
 
     try {
+      // Update progress stage
+      setState(() {
+        _saveStage = SaveStage.uploadingImages;
+      });
+      
       // Create a unique folder name based on timestamp
       final String folderName = 'gardens/${DateTime.now().millisecondsSinceEpoch}';
       List<String> photoUrls = [];
@@ -204,10 +242,24 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
           files: _gardenImages,
           folder: folderName,
           onProgress: (progress) {
-            // Optional progress handling
+            // Update progress in the UI
+            setState(() {
+              _saveProgress = progress;
+            });
           },
         );
+      } else {
+        // Skip to next stage if no images
+        setState(() {
+          _saveProgress = 1.0;
+        });
       }
+      
+      // Update progress stage
+      setState(() {
+        _saveStage = SaveStage.savingData;
+        _saveProgress = 0.7; // Start from 70% for the data saving phase
+      });
       
       // Prepare garden data with AI analysis and photo URLs
       final Map<String, dynamic> gardenData = {
@@ -234,14 +286,39 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
         );
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Garden profile saved successfully!')),
-      );
+      // Update progress to complete
+      setState(() {
+        _saveProgress = 1.0;
+        _saveStage = SaveStage.complete;
+      });
+      
+      // Stop the button animation
+      _saveButtonAnimController.stop();
+      _saveButtonAnimController.reset();
+      
+      // Add a delay to show the completion state
+      await Future.delayed(const Duration(seconds: 2));
+      
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save garden profile: $e')),
-      );
+      debugPrint('Error saving garden profile: $e');
+      
+      // Update state to show error
+      setState(() {
+        _saveStage = SaveStage.error;
+        _saveErrorMessage = e.toString();
+      });
+      
+      // Stop the button animation
+      _saveButtonAnimController.stop();
+      _saveButtonAnimController.reset();
     }
+  }
+  
+  void _closeSaveOverlay() {
+    setState(() {
+      _isSaving = false;
+      _saveProgress = 0.0;
+    });
   }
 
   @override
@@ -324,6 +401,15 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
               return provider.analysisReady ? const ChatFab() : const SizedBox.shrink();
             },
           ),
+          
+          // Overlay the save progress when active
+          if (_isSaving)
+            SaveProgressOverlay(
+              progress: _saveProgress,
+              stage: _saveStage,
+              errorMessage: _saveErrorMessage,
+              onClose: _closeSaveOverlay,
+            ),
         ],
       ),
       bottomNavigationBar: PollinatorBottomNavBar(
@@ -614,15 +700,25 @@ class _GardenScannerScreenState extends State<GardenScannerScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ActionButton(
-                  label: 'Save Plan to Profile',
-                  onPressed: _saveGardenProfile,
+                // Save button with animation
+                AnimatedBuilder(
+                  animation: _saveButtonAnimController,
+                  builder: (context, child) {
+                    return ActionButton(
+                      label: 'Save Plan to Profile',
+                      onPressed: _isSaving ? null : _saveGardenProfile,
+                      // Pulse effect when saving
+                      scale: _isSaving 
+                          ? 1.0 + (_saveButtonAnimController.value * 0.05)
+                          : 1.0,
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 ActionButton(
                   label: 'Scan Garden Again',
                   isPrimary: false,
-                  onPressed: _resetAnalysis,
+                  onPressed: _isSaving ? null : _resetAnalysis,
                 ),
               ],
             ),

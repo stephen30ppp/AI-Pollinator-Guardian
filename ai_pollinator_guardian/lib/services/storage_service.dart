@@ -593,5 +593,47 @@ class StorageService {
   }
 }
 
+extension StorageServiceExtension on StorageService {
+  /// Get a storage reference from a download URL
+  /// Returns null if the URL is not a valid Firebase Storage URL
+  Reference? getStorageRefFromUrl(String downloadUrl) {
+    try {
+      debugPrint('🔍 Getting storage reference from URL: $downloadUrl');
+      
+      if (!downloadUrl.startsWith('https://firebasestorage.googleapis.com')) {
+        debugPrint('❌ Not a Firebase Storage URL: $downloadUrl');
+        return null;
+      }
+      
+      // Extract the path from the URL
+      final uri = Uri.parse(downloadUrl);
+      final pathSegments = uri.pathSegments;
+      
+      // The typical path format is /v0/b/[bucket]/o/[encodedPath]
+      if (pathSegments.length >= 4 && pathSegments[0] == 'v0' && pathSegments[1] == 'b' && pathSegments[3] == 'o') {
+        // Get the encoded path part
+        String encodedPath = uri.path.split('/o/')[1];
+        
+        // Remove any query parameters if present
+        if (encodedPath.contains('?')) {
+          encodedPath = encodedPath.split('?')[0];
+        }
+        
+        // URL decode the path
+        final path = Uri.decodeComponent(encodedPath);
+        debugPrint('✅ Extracted storage path: $path');
+        
+        return _storage.ref().child(path);
+      }
+      
+      debugPrint('❌ Could not parse URL structure: $downloadUrl');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting storage reference from URL: $e');
+      return null;
+    }
+  }
+}
+
 // Helper function for min value
 int min(int a, int b) => a < b ? a : b;
