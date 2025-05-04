@@ -444,10 +444,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                     const Divider(height: DesignTokens.m),
                     const SizedBox(height: DesignTokens.m),
 
-                    // Activity statistics section
-                    _buildStatisticsSection(user, colorScheme),
-                    const SizedBox(height: DesignTokens.xl),
-
                     // Sign out button
                     AuthButton(
                       text: 'Sign Out',
@@ -554,79 +550,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatisticsSection(dynamic user, ColorScheme colorScheme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Activity',
-          style: DesignTokens.titleMedium.copyWith(
-            color: colorScheme.onBackground,
-          ),
-        ),
-        const SizedBox(height: DesignTokens.m),
-        Row(
-          children: [
-            _buildStatCard(
-              'Pollinator Sightings',
-              user.sightings.length.toString(),
-              Icons.visibility_rounded,
-              colorScheme,
-            ),
-            const SizedBox(width: DesignTokens.m),
-            _buildStatCard(
-              'Gardens',
-              user.gardens.length.toString(),
-              Icons.local_florist_rounded,
-              colorScheme,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    ColorScheme colorScheme,
-  ) {
-    return Expanded(
-      child: Card(
-        color: colorScheme.secondaryContainer,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(DesignTokens.m),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: colorScheme.secondary, size: 24),
-              const SizedBox(height: DesignTokens.s),
-              Text(
-                value,
-                style: DesignTokens.titleLarge.copyWith(
-                  fontSize: 20,
-                  color: colorScheme.onSecondaryContainer,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: DesignTokens.bodyMedium.copyWith(
-                  color: colorScheme.onSecondaryContainer.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
