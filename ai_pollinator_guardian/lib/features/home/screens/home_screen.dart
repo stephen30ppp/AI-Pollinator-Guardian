@@ -247,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   // Fact Carousel
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.m),
+                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.l),
                     child: FactCardCarousel(
                       facts: PollinatorFact.sampleFacts,
                       greeting: 'Good Day, Nature Guardian!',
@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   // Feature Cards Carousel
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.m),
+                    padding: const EdgeInsets.symmetric(horizontal: DesignTokens.s),
                     child: FeatureCardCarousel(
                       items: [
                         FeatureCardItem(
